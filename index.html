@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulatore Transizioni F24 — Quickfisco</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { height: 100%; }
+
+    /* ── PASSWORD GATE ── */
+    #gate {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #0f172a;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 0;
+    }
+    #gate.hidden { display: none; }
+    .gate-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 40px 44px;
+      width: 360px;
+      display: flex; flex-direction: column; gap: 24px;
+    }
+    .gate-logo {
+      font-size: 13px; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: #64748b;
+    }
+    .gate-title {
+      font-size: 20px; font-weight: 700; color: #f1f5f9; line-height: 1.3;
+    }
+    .gate-sub {
+      font-size: 13px; color: #64748b; margin-top: -12px;
+    }
+    .gate-field { display: flex; flex-direction: column; gap: 8px; }
+    .gate-field label { font-size: 12px; font-weight: 600; color: #94a3b8; letter-spacing: .05em; }
+    .gate-field input {
+      background: #0f172a; border: 1px solid #334155; border-radius: 8px;
+      padding: 10px 14px; font-size: 15px; color: #f1f5f9;
+      outline: none; transition: border-color .15s;
+      font-family: inherit;
+    }
+    .gate-field input:focus { border-color: #6366f1; }
+    .gate-field input.error { border-color: #ef4444; }
+    .gate-error { font-size: 12px; color: #ef4444; display: none; }
+    .gate-error.visible { display: block; }
+    .gate-btn {
+      background: #6366f1; border: none; border-radius: 8px;
+      padding: 12px; font-size: 14px; font-weight: 700;
+      color: white; cursor: pointer; transition: background .15s;
+    }
+    .gate-btn:hover { background: #4f46e5; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: #0f172a;
+      color: white;
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header-left h1 { font-size: 16px; font-weight: 700; }
+    .header-left p  { font-size: 12px; color: #64748b; margin-top: 2px; }
+    .reset-btn {
+      background: none; border: 1px solid #334155; border-radius: 7px;
+      padding: 6px 14px; font-size: 12px; color: #94a3b8; cursor: pointer;
+      transition: all .15s;
+    }
+    .reset-btn:hover { border-color: #64748b; color: white; }
+
+    /* ── HISTORY BAR ── */
+    .history-bar {
+      background: white;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 10px 24px;
+      flex-shrink: 0;
+      display: none;
+      overflow-x: auto;
+    }
+    .history-flow {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      white-space: nowrap;
+      min-height: 36px;
+    }
+    .h-state {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+    .h-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 12px;
+      border: 1.5px solid transparent;
+    }
+    .h-sep {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 10px;
+      flex-shrink: 0;
+    }
+    .h-arrow { color: #cbd5e1; font-size: 18px; line-height: 1; }
+    .h-evento { font-size: 10px; color: #94a3b8; max-width: 120px; text-align: center; white-space: normal; line-height: 1.3; }
+
+    /* ── COLUMNS WRAPPER ── */
+    .columns-wrap {
+      flex: 1;
+      display: flex;
+      align-items: stretch;
+      padding: 16px 16px;
+      gap: 0;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* ── COLUMN ── */
+    .col {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: opacity .2s;
+      flex-shrink: 0;
+    }
+    .col.inactive { opacity: .45; pointer-events: none; }
+
+    .col-g { width: 200px; }
+    .col-c { width: 204px; }
+    .col-e { width: 288px; }
+    .col-r { flex: 1; min-width: 300px; }
+
+    .col-head {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .step-dot {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #3b82f6; color: white;
+      font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .step-dot.done   { background: #22c55e; }
+    .step-dot.idle   { background: #e2e8f0; color: #94a3b8; }
+    .col-title { font-size: 13px; font-weight: 700; color: #1e293b; }
+    .col-sub   { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+    .col-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+    .col-body::-webkit-scrollbar { width: 4px; }
+    .col-body::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
+
+    /* ── STATE ITEMS ── */
+    .s-item {
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: 1.5px solid transparent;
+      cursor: pointer;
+      transition: all .12s;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .s-item:hover { transform: translateX(2px); }
+    .s-item.selected { box-shadow: 0 0 0 2px rgba(0,0,0,.12); }
+    .s-item.disabled { opacity: .22; cursor: not-allowed; pointer-events: none; }
+    .s-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ── EVENT ITEMS ── */
+    .cat-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .07em; color: #94a3b8;
+      padding: 6px 4px 4px;
+    }
+    .e-item {
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: 1.5px solid #f1f5f9;
+      background: #fafafa;
+      cursor: pointer;
+      transition: all .12s;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .e-item:hover  { border-color: #93c5fd; background: white; transform: translateX(2px); }
+    .e-item.active { border-color: #3b82f6; background: #eff6ff; }
+    .e-pill {
+      font-size: 9px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .07em; padding: 2px 6px; border-radius: 4px;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .cat-sistema   { background: #e0f2fe; color: #0369a1; }
+    .cat-utente    { background: #f0fdf4; color: #15803d; }
+    .cat-operatore { background: #fef3c7; color: #b45309; }
+    .cat-ec        { background: #fee2e2; color: #991b1b; }
+    .e-text { font-size: 13px; line-height: 1.4; }
+
+    /* ── RESULT ── */
+    .result-inner { padding: 16px; }
+    .urgency-bar {
+      background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px;
+      padding: 9px 13px; color: #991b1b; font-size: 13px; font-weight: 600;
+      margin-bottom: 14px; display: flex; align-items: center; gap: 6px;
+    }
+    .result-states {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; margin-bottom: 14px;
+    }
+    .rs-col { }
+    .rs-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #94a3b8; margin-bottom: 8px; }
+    .rs-row { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+    .rs-type { font-size: 11px; color: #94a3b8; width: 82px; flex-shrink: 0; }
+    .rs-badge {
+      font-size: 11px; font-weight: 600; padding: 3px 10px;
+      border-radius: 12px; border: 1.5px solid transparent;
+    }
+    .rs-muted { font-size: 12px; color: #94a3b8; font-style: italic; }
+
+    .result-divider { border: none; border-top: 1px solid #f1f5f9; margin: 12px 0; }
+    .result-field h4 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #94a3b8; margin-bottom: 5px; }
+    .result-field p  { font-size: 13px; color: #334155; line-height: 1.5; white-space: pre-line; }
+
+    .continue-btn {
+      margin-top: 16px; padding: 9px 18px;
+      background: #0f172a; color: white; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600; cursor: pointer; transition: background .12s;
+      width: 100%;
+    }
+    .continue-btn:hover    { background: #1e293b; }
+    .continue-btn:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
+
+    /* ── SEPARATORS ── */
+    .col-sep {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      flex-shrink: 0;
+      color: #cbd5e1;
+      font-size: 20px;
+      font-weight: 300;
+    }
+
+    /* ── EMPTY STATES ── */
+    .empty-col {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      height: 100%; padding: 24px; text-align: center; color: #cbd5e1;
+    }
+    .empty-col svg { margin-bottom: 10px; opacity: .5; }
+    .empty-col p { font-size: 13px; line-height: 1.4; }
+  </style>
+</head>
+<body>
+
+<!-- PASSWORD GATE -->
+<div id="gate">
+  <div class="gate-card">
+    <div>
+      <div class="gate-logo">Quickfisco</div>
+    </div>
+    <div>
+      <div class="gate-title">Simulatore Transizioni F24</div>
+      <div class="gate-sub">Accesso riservato al team interno</div>
+    </div>
+    <div class="gate-field">
+      <label>PASSWORD</label>
+      <input type="password" id="pwInput" placeholder="••••••••" autocomplete="current-password" />
+      <span class="gate-error" id="pwError">Password errata. Riprova.</span>
+    </div>
+    <button class="gate-btn" id="pwBtn">Accedi</button>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <h1>🔄 Simulatore Transizioni di Stato — Microservizio F24</h1>
+    <p>Seleziona lo stato corrente da sinistra verso destra per simulare una transizione</p>
+  </div>
+  <button class="reset-btn" onclick="resetAll()">↺ Ricomincia</button>
+</div>
+
+<!-- HISTORY BAR -->
+<div class="history-bar" id="history-bar">
+  <div class="history-flow" id="history-flow"></div>
+</div>
+
+<!-- COLUMNS -->
+<div class="columns-wrap">
+
+  <!-- COL 1 — Gestione -->
+  <div class="col col-g" id="col-g">
+    <div class="col-head">
+      <div class="step-dot idle" id="dot-g">1</div>
+      <div>
+        <div class="col-title">Stato gestione</div>
+        <div class="col-sub">Condizione operativa</div>
+      </div>
+    </div>
+    <div class="col-body" id="list-g"></div>
+  </div>
+
+  <div class="col-sep">›</div>
+
+  <!-- COL 2 — Comunicazione -->
+  <div class="col col-c inactive" id="col-c">
+    <div class="col-head">
+      <div class="step-dot idle" id="dot-c">2</div>
+      <div>
+        <div class="col-title">Stato comunicazione</div>
+        <div class="col-sub">Risposta utente</div>
+      </div>
+    </div>
+    <div class="col-body" id="list-c">
+      <div class="empty-col">
+        <p>Seleziona prima<br>lo stato gestione</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sep">›</div>
+
+  <!-- COL 3 — Evento -->
+  <div class="col col-e inactive" id="col-e">
+    <div class="col-head">
+      <div class="step-dot idle" id="dot-e">3</div>
+      <div>
+        <div class="col-title">Evento o azione</div>
+        <div class="col-sub">Cosa scatena la transizione</div>
+      </div>
+    </div>
+    <div class="col-body" id="list-e">
+      <div class="empty-col">
+        <p>Seleziona prima<br>lo stato comunicazione</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sep">›</div>
+
+  <!-- COL 4 — Risultato -->
+  <div class="col col-r inactive" id="col-r">
+    <div class="col-head">
+      <div class="step-dot idle" id="dot-r">4</div>
+      <div>
+        <div class="col-title">Risultato</div>
+        <div class="col-sub">Nuovo stato e conseguenze</div>
+      </div>
+    </div>
+    <div class="col-body" id="result-body">
+      <div class="empty-col">
+        <p>Seleziona un evento<br>per vedere il risultato</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────
+
+const G = {
+  DP:  { id:'DA PAGARE',           bg:'#dbeafe', text:'#1d4ed8', dot:'#3b82f6' },
+  MP:  { id:'MESSO IN PAGAMENTO',  bg:'#fef3c7', text:'#b45309', dot:'#f59e0b' },
+  RP:  { id:'RIMUOVERE PAGAMENTO', bg:'#fee2e2', text:'#991b1b', dot:'#ef4444' },
+  QC:  { id:'QUIETANZA CARICATA',  bg:'#dcfce7', text:'#15803d', dot:'#22c55e' },
+  NG:  { id:'NON GESTIRE',         bg:'#f3f4f6', text:'#374151', dot:'#6b7280' },
+  AN:  { id:'ANOMALIA',            bg:'#fce7f3', text:'#9d174d', dot:'#ec4899' },
+  XX:  { id:'ANNULLATO',           bg:'#f9fafb', text:'#6b7280', dot:'#d1d5db' },
+};
+const C = {
+  NC:  { id:'NON COMUNICATO',  bg:'#f1f5f9', text:'#475569', dot:'#94a3b8' },
+  AR:  { id:'ATTESA RISPOSTA', bg:'#eff6ff', text:'#1d4ed8', dot:'#60a5fa' },
+  PQ:  { id:'PAGA QUICKFISCO', bg:'#f0fdf4', text:'#15803d', dot:'#4ade80' },
+  PU:  { id:'PAGA UTENTE',     bg:'#f5f3ff', text:'#5b21b6', dot:'#a78bfa' },
+  NR:  { id:'NESSUNA RISPOSTA',bg:'#fff7ed', text:'#c2410c', dot:'#fb923c' },
+  DC:  { id:'DA CONTATTARE',   bg:'#fefce8', text:'#854d0e', dot:'#fbbf24' },
+};
+const CATS = {
+  sistema:   { label:'Sistema',   cls:'cat-sistema' },
+  utente:    { label:'Utente',    cls:'cat-utente' },
+  operatore: { label:'Operatore', cls:'cat-operatore' },
+  ec:        { label:'Edge case', cls:'cat-ec' },
+};
+
+const T = [
+  // SISTEMA
+  { fromG:'DP', fromC:'NC', cat:'sistema',
+    evento:'T-30 trigger — utente con delega attiva',
+    toG:'DP', toC:'AR',
+    msg:'📨 Messaggio Tipo B inviato — senza allegato.\nLista F24 + importi + deadline risposta.\nCTA verso Dashboard e Tasse e scadenze.',
+    urgenza:null, note:'Un unico messaggio per scadenza. Raggruppa tutti gli F24 con la stessa data.' },
+
+  { fromG:'DP', fromC:'NC', cat:'sistema',
+    evento:'T-30 trigger — utente senza delega attiva',
+    toG:'NG', toC:null,
+    msg:'📎 Messaggio Tipo A inviato — con F24 allegato.\n(Un messaggio separato per ogni F24.)',
+    urgenza:null, note:'Utente senza delega — nessun follow-up richiesto dal microservizio.' },
+
+  { fromG:'MP', fromC:'NC', cat:'sistema',
+    evento:'T-30 trigger — utente con delega attiva',
+    toG:'MP', toC:'AR',
+    msg:'📨 Messaggio Tipo B inviato — senza allegato.',
+    urgenza:null, note:'Il messaggio T-30 parte anche se l\'F24 è già in MESSO IN PAGAMENTO.' },
+
+  { fromG:'DP', fromC:'NC', cat:'sistema',
+    evento:'F24 arriva con ≤ T-3 lavorativi dalla scadenza',
+    toG:'DP', toC:'DC',
+    msg:'Nessun messaggio automatico.\nIn "Tasse e scadenze": "Ti contatteremo a breve".',
+    urgenza:null, note:'Nessun pulsante di scelta mostrato all\'utente. L\'operatore deve contattarlo esternamente.' },
+
+  { fromG:'DP', fromC:'AR', cat:'sistema',
+    evento:'T-3 lavorativi scaduti senza risposta',
+    toG:'NG', toC:'PU',
+    msg:'📎 F24 allegato inviato automaticamente.\nMessaggio con guida al pagamento.',
+    urgenza:null, note:'Transizione automatica — nessuna azione richiesta all\'operatore.' },
+
+  { fromG:'MP', fromC:'AR', cat:'sistema',
+    evento:'T-3 lavorativi scaduti senza risposta',
+    toG:'RP', toC:'PU',
+    msg:'📎 F24 allegato inviato automaticamente.',
+    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi',
+    note:'Operatore deve rimuovere il pagamento da DATEV e poi cliccare "Pagamento rimosso".' },
+
+  // UTENTE
+  { fromG:'DP', fromC:'AR', cat:'utente',
+    evento:'Utente risponde "Paga Quickfisco"',
+    toG:'DP', toC:'PQ',
+    msg:'Nessun messaggio.',
+    urgenza:null, note:'Operatore può procedere con la messa in pagamento su DATEV.' },
+
+  { fromG:'MP', fromC:'AR', cat:'utente',
+    evento:'Utente risponde "Paga Quickfisco"',
+    toG:'MP', toC:'PQ',
+    msg:'Nessun messaggio.',
+    urgenza:null, note:'Pagamento già predisposto — operatore può procedere con la quietanza.' },
+
+  { fromG:'DP', fromC:'AR', cat:'utente',
+    evento:'Utente risponde "Pago io"',
+    toG:'NG', toC:'PU',
+    msg:'📎 F24 allegato inviato immediatamente.',
+    urgenza:null, note:'Invio immediato alla scelta. L\'utente gestisce autonomamente il pagamento.' },
+
+  { fromG:'MP', fromC:'AR', cat:'utente',
+    evento:'Utente risponde "Pago io"',
+    toG:'RP', toC:'PU',
+    msg:'⏳ F24 allegato inviato solo dopo "Pagamento rimosso" + conferma modal.',
+    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi',
+    note:'File non inviato finché l\'operatore non rimuove da DATEV. Presidio anti-doppio pagamento.' },
+
+  { fromG:'DP', fromC:'PQ', cat:'utente',
+    evento:'Utente cambia preferenza in "Pago io" (via supporto)',
+    toG:'NG', toC:'PU',
+    msg:'📎 F24 allegato inviato immediatamente.',
+    urgenza:null, note:'Cambio di preferenza gestito dal supporto clienti.' },
+
+  { fromG:'MP', fromC:'PQ', cat:'utente',
+    evento:'Utente cambia preferenza in "Pago io" (via supporto)',
+    toG:'RP', toC:'PU',
+    msg:'⏳ F24 allegato inviato dopo "Pagamento rimosso" + conferma modal.',
+    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi',
+    note:'Idem caso MESSO IN PAGAMENTO + ATTESA RISPOSTA.' },
+
+  // OPERATORE
+  { fromG:'DP', fromC:'*', cat:'operatore',
+    evento:'Operatore: mette in pagamento su DATEV',
+    toG:'MP', toC:'INV',
+    msg:'Nessun messaggio.',
+    urgenza:null, note:'L\'operatore può predisporre il pagamento anche mesi prima della scadenza.' },
+
+  { fromG:'MP', fromC:'PQ', cat:'operatore',
+    evento:'Operatore: carica quietanza',
+    toG:'QC', toC:'PQ',
+    msg:'Nessun messaggio (silenzioso).',
+    urgenza:null, note:'File quietanza salvato nei Documenti utente senza notifica automatica.' },
+
+  { fromG:'RP', fromC:'*', cat:'operatore',
+    evento:'Operatore: "Pagamento rimosso" — file F24 presente',
+    toG:'NG', toC:'INV',
+    msg:'📎 F24 allegato inviato dopo conferma modal.\nModal avvisa: "Verrà inviato il file F24 all\'utente".',
+    urgenza:null, note:'L\'operatore rimuove prima da DATEV, poi conferma nella modal.' },
+
+  { fromG:'RP', fromC:'*', cat:'operatore',
+    evento:'Operatore: "Pagamento rimosso" — file eliminato (EC05 Sc. 2)',
+    toG:'XX', toC:'INV',
+    msg:'Nessun messaggio. Modal e invio file soppressi.',
+    urgenza:null, note:'Il file F24 è stato eliminato dall\'adempimento — non esiste più.' },
+
+  { fromG:'QC', fromC:'*', cat:'operatore',
+    evento:'Operatore: rimuove quietanza (menu …)',
+    toG:'MP', toC:'INV',
+    msg:'Nessun messaggio.',
+    urgenza:null, note:'Torna a MESSO IN PAGAMENTO per consentire il caricamento di una quietanza corretta.' },
+
+  { fromG:'DC', fromC:'DC', cat:'operatore',
+    evento:'Operatore: aggiorna stati dopo contatto manuale',
+    toG:null, toC:null,
+    msg:'Dipende dagli stati scelti dall\'operatore.',
+    urgenza:null, note:'Via menu … → "Aggiorna stati F24". Nota obbligatoria. L\'operatore può impostare qualsiasi combinazione.' },
+
+  { fromG:'AN', fromC:'*', cat:'operatore',
+    evento:'Operatore: "Cambia stato manualmente" (menu …)',
+    toG:null, toC:null,
+    msg:'Dipende dagli stati scelti dall\'operatore.',
+    urgenza:null, note:'Unica modalità di uscita da ANOMALIA. Nota obbligatoria + evento in History.' },
+
+  { fromG:'*', fromC:'*', cat:'operatore',
+    evento:'Operatore: annulla F24 (menu … → "Annulla F24")',
+    toG:'XX', toC:'INV',
+    msg:'Nessun messaggio.',
+    urgenza:null, note:'Tutte le automazioni vengono bloccate. Reversibile solo con nota obbligatoria.' },
+
+  { fromG:'XX', fromC:'*', cat:'operatore',
+    evento:'Operatore: reverte ANNULLATO — caso eccezionale',
+    toG:null, toC:null,
+    msg:'Nessun messaggio automatico.',
+    urgenza:null, note:'Caso eccezionale. Nota obbligatoria + evento in History.' },
+
+  // EDGE CASES
+  { fromG:'DP', fromC:'*', cat:'ec',
+    evento:'⚠️ EC02 — Utente revoca la delega',
+    toG:'NG', toC:'PU',
+    msg:'📎 F24 allegato inviato immediatamente.',
+    urgenza:null, note:'Nessuna azione richiesta all\'operatore.' },
+
+  { fromG:'MP', fromC:'*', cat:'ec',
+    evento:'⚠️ EC02 — Utente revoca la delega',
+    toG:'RP', toC:'PU',
+    msg:'⏳ F24 allegato inviato solo dopo "Pagamento rimosso" + conferma modal.',
+    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi',
+    note:'File non inviato finché l\'operatore non rimuove da DATEV e conferma.' },
+
+  { fromG:'AN', fromC:'*', cat:'ec',
+    evento:'⚠️ EC02 — Utente revoca la delega',
+    toG:'AN', toC:'INV',
+    msg:'Nessun messaggio.',
+    urgenza:'🔴 Rimane in cima — operatore deve risolvere l\'anomalia prima di gestire la revoca',
+    note:'La revoca viene processata solo dopo che l\'anomalia è stata risolta.' },
+
+  { fromG:'DP', fromC:'NC', cat:'ec',
+    evento:'⚠️ EC05 — Operatore rimuove F24 dall\'adempimento',
+    toG:'NG', toC:'INV',
+    msg:'Nessun messaggio per il vecchio F24.\n→ Nuovo F24 (stesso slot): DA PAGARE / NON COMUNICATO — rientra nel flusso standard.',
+    urgenza:null, note:'Riga vecchio F24 rimane in rosso ⚠️ "F24 eliminato". Alert scompare quando raggiunge ANNULLATO.' },
+
+  { fromG:'MP', fromC:'NC', cat:'ec',
+    evento:'⚠️ EC05 — Operatore rimuove F24 dall\'adempimento',
+    toG:'RP', toC:'INV',
+    msg:'Nessun messaggio. File eliminato → modal soppressa → vecchio F24 verso ANNULLATO.\n→ Nuovo F24 (stesso slot): DA PAGARE / NON COMUNICATO.',
+    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi',
+    note:'Modal e invio file soppressi: il file è stato eliminato e non esiste più.' },
+
+  { fromG:'DP', fromC:'AR', cat:'ec',
+    evento:'⚠️ EC05 — Operatore rimuove F24 dall\'adempimento',
+    toG:'NG', toC:'INV',
+    msg:'Nessun messaggio per il vecchio F24.\n→ Nuovo F24 (stesso slot): ANOMALIA 🔴\n(utente ha già ricevuto messaggio con importo errato)',
+    urgenza:'🔴 Alert urgente per il nuovo F24 + email a Giusi',
+    note:'L\'utente ha già ricevuto il messaggio con dati sbagliati. Contatto manuale urgente.' },
+
+  { fromG:'DP', fromC:'PQ', cat:'ec',
+    evento:'⚠️ EC05 — Operatore rimuove F24 dall\'adempimento',
+    toG:'NG', toC:'INV',
+    msg:'Nessun messaggio per il vecchio F24.\n→ Nuovo F24 (stesso slot): ANOMALIA 🔴\n(utente ha già confermato importo errato)',
+    urgenza:'🔴 Alert urgente per il nuovo F24 + email a Giusi',
+    note:'Contatto manuale urgente per comunicare la variazione e raccogliere nuova conferma.' },
+
+  { fromG:'DP', fromC:'PU', cat:'ec',
+    evento:'⚠️ EC05 — Operatore rimuove F24 dall\'adempimento',
+    toG:'NG', toC:'INV',
+    msg:'Nessun messaggio per il vecchio F24.\n→ Nuovo F24 (stesso slot): ANOMALIA 🔴\n(utente ha già il file F24 non più valido)',
+    urgenza:'🔴 Situazione emergenziale — utente potrebbe aver già pagato il file sbagliato',
+    note:'Contatto immediato. Verificare se il pagamento è già stato effettuato.' },
+
+  { fromG:'DP', fromC:'*', cat:'ec',
+    evento:'⚠️ EC03 — Profilo archiviato (contratto rescisso)',
+    toG:'XX', toC:'INV',
+    msg:'Nessun messaggio.',
+    urgenza:null, note:'Transizione automatica all\'archiviazione del profilo.' },
+
+  { fromG:'MP', fromC:'*', cat:'ec',
+    evento:'⚠️ EC03 — Profilo archiviato (contratto rescisso)',
+    toG:'RP', toC:'INV',
+    msg:'Nessun messaggio. Operatore deve gestire manualmente.',
+    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi',
+    note:'Dopo rimozione da DATEV → ANNULLATO (non NON GESTIRE).' },
+
+  { fromG:'NG', fromC:'*', cat:'ec',
+    evento:'⚠️ EC03 — Profilo archiviato (contratto rescisso)',
+    toG:'XX', toC:'INV',
+    msg:'Nessun messaggio.',
+    urgenza:null, note:'Transizione automatica.' },
+
+  { fromG:'AN', fromC:'*', cat:'ec',
+    evento:'⚠️ EC03 — Profilo archiviato (contratto rescisso)',
+    toG:'XX', toC:'INV',
+    msg:'Nessun messaggio.',
+    urgenza:null, note:'L\'anomalia non è più azionabile — profilo archiviato.' },
+];
+
+// ── STATE ─────────────────────────────────────────────
+let selG = null, selC = null, selT = null, history = [];
+
+// ── HELPERS ───────────────────────────────────────────
+const gInfo = k => G[k];
+const cInfo = k => C[k];
+const gByName = n => Object.values(G).find(g => g.id === n);
+const cByName = n => Object.values(C).find(c => c.id === n);
+
+function resolveLabel(key) {
+  if (!key || key === null) return null;
+  if (key === 'INV') return '(invariato)';
+  if (G[key]) return G[key].id;
+  if (C[key]) return C[key].id;
+  return key;
+}
+
+function availTransitions() {
+  return T.filter(t =>
+    (t.fromG === '*' || t.fromG === selG) &&
+    (t.fromC === '*' || t.fromC === selC)
+  );
+}
+
+function availCommsForG(gKey) {
+  const set = new Set();
+  const hasWild = T.some(t => (t.fromG === gKey || t.fromG === '*') && t.fromC === '*');
+  T.forEach(t => {
+    if (t.fromG === gKey || t.fromG === '*') {
+      if (t.fromC !== '*') set.add(t.fromC);
+    }
+  });
+  if (hasWild) Object.keys(C).forEach(k => set.add(k));
+  return set;
+}
+
+function makeBadge(key, type) {
+  const span = document.createElement('span');
+  const info = type === 'g' ? (G[key] || gByName(key)) : (C[key] || cByName(key));
+  if (!key || key === null) {
+    span.className = 'rs-muted'; span.textContent = '—'; return span;
+  }
+  if (key === 'INV' || key === '(invariato)') {
+    span.className = 'rs-muted'; span.textContent = '(invariato)'; return span;
+  }
+  if (!info) {
+    span.className = 'rs-muted'; span.textContent = key; return span;
+  }
+  span.className = 'rs-badge';
+  span.style.cssText = `background:${info.bg};color:${info.text};border-color:${info.dot}`;
+  span.textContent = info.id;
+  return span;
+}
+
+// ── RENDER GESTIONE ───────────────────────────────────
+function renderG() {
+  const el = document.getElementById('list-g');
+  const dot = document.getElementById('dot-g');
+  el.innerHTML = '';
+  Object.entries(G).forEach(([k, s]) => {
+    const d = document.createElement('div');
+    d.className = 'e-item'; // reuse
+    d.style.cssText = 's-item';
+    // Build as s-item
+    d.innerHTML = '';
+    d.className = 's-item' + (selG === k ? ' selected' : '');
+    d.style.cssText = `background:${s.bg};color:${s.text};border-color:${selG===k ? s.dot : 'transparent'}`;
+    const dot2 = document.createElement('span');
+    dot2.className = 's-dot';
+    dot2.style.background = s.dot;
+    d.appendChild(dot2);
+    d.appendChild(document.createTextNode(s.id));
+    d.onclick = () => {
+      selG = k; selC = null; selT = null;
+      history = [{ g: k, c: null, evento: null }];
+      renderAll();
+    };
+    el.appendChild(d);
+  });
+  dot.className = 'step-dot' + (selG ? ' done' : ' idle');
+  dot.textContent = selG ? '✓' : '1';
+}
+
+// ── RENDER COMUNICAZIONE ──────────────────────────────
+function renderC() {
+  const col = document.getElementById('col-c');
+  const el = document.getElementById('list-c');
+  const dot = document.getElementById('dot-c');
+  if (!selG) {
+    col.className = 'col col-c inactive';
+    el.innerHTML = '<div class="empty-col"><p>Seleziona prima<br>lo stato gestione</p></div>';
+    dot.className = 'step-dot idle'; dot.textContent = '2';
+    return;
+  }
+  col.className = 'col col-c';
+  el.innerHTML = '';
+  const avail = availCommsForG(selG);
+  Object.entries(C).forEach(([k, s]) => {
+    const ok = avail.has(k);
+    const d = document.createElement('div');
+    d.className = 's-item' + (selC === k ? ' selected' : '') + (ok ? '' : ' disabled');
+    d.style.cssText = `background:${s.bg};color:${s.text};border-color:${selC===k ? s.dot : 'transparent'}`;
+    const dot2 = document.createElement('span');
+    dot2.className = 's-dot'; dot2.style.background = s.dot;
+    d.appendChild(dot2);
+    d.appendChild(document.createTextNode(s.id));
+    d.onclick = () => {
+      selC = k; selT = null;
+      if (history.length > 0) history[history.length-1].c = k;
+      renderAll();
+    };
+    el.appendChild(d);
+  });
+  dot.className = 'step-dot' + (selC ? ' done' : '');
+  dot.textContent = selC ? '✓' : '2';
+}
+
+// ── RENDER EVENTI ─────────────────────────────────────
+function renderE() {
+  const col = document.getElementById('col-e');
+  const el = document.getElementById('list-e');
+  const dot = document.getElementById('dot-e');
+  if (!selG || !selC) {
+    col.className = 'col col-e inactive';
+    el.innerHTML = '<div class="empty-col"><p>Seleziona prima<br>lo stato comunicazione</p></div>';
+    dot.className = 'step-dot idle'; dot.textContent = '3';
+    return;
+  }
+  col.className = 'col col-e';
+  el.innerHTML = '';
+  const avail = availTransitions();
+  if (!avail.length) {
+    el.innerHTML = '<div class="empty-col"><p>Nessuna transizione disponibile per questa combinazione</p></div>';
+    dot.className = 'step-dot'; dot.textContent = '3';
+    return;
+  }
+  const byCat = {};
+  avail.forEach(t => { (byCat[t.cat] = byCat[t.cat]||[]).push(t); });
+  ['sistema','utente','operatore','ec'].forEach(cat => {
+    if (!byCat[cat]) return;
+    const lbl = document.createElement('div');
+    lbl.className = 'cat-label';
+    lbl.textContent = CATS[cat].label;
+    el.appendChild(lbl);
+    byCat[cat].forEach(t => {
+      const idx = T.indexOf(t);
+      const d = document.createElement('div');
+      d.className = 'e-item' + (selT === t ? ' active' : '');
+      const pill = document.createElement('span');
+      pill.className = 'e-pill ' + CATS[cat].cls;
+      pill.textContent = CATS[cat].label;
+      const txt = document.createElement('span');
+      txt.className = 'e-text';
+      txt.textContent = t.evento;
+      d.appendChild(pill); d.appendChild(txt);
+      d.onclick = () => { selT = t; renderAll(); };
+      el.appendChild(d);
+    });
+  });
+  dot.className = 'step-dot' + (selT ? ' done' : '');
+  dot.textContent = selT ? '✓' : '3';
+}
+
+// ── RENDER RISULTATO ──────────────────────────────────
+function renderR() {
+  const col = document.getElementById('col-r');
+  const body = document.getElementById('result-body');
+  const dot = document.getElementById('dot-r');
+  if (!selT) {
+    col.className = 'col col-r inactive';
+    body.innerHTML = '<div class="empty-col"><p>Seleziona un evento<br>per vedere il risultato</p></div>';
+    dot.className = 'step-dot idle'; dot.textContent = '4';
+    return;
+  }
+  col.className = 'col col-r';
+  const t = selT;
+  body.innerHTML = '';
+  const inner = document.createElement('div');
+  inner.className = 'result-inner';
+
+  // Urgency
+  if (t.urgenza) {
+    const ub = document.createElement('div');
+    ub.className = 'urgency-bar';
+    ub.textContent = t.urgenza;
+    inner.appendChild(ub);
+  }
+
+  // Before / After
+  const rs = document.createElement('div'); rs.className = 'result-states';
+
+  const makeRS = (title, gKey, cKey) => {
+    const col2 = document.createElement('div'); col2.className = 'rs-col';
+    const lbl = document.createElement('div'); lbl.className = 'rs-label'; lbl.textContent = title;
+    col2.appendChild(lbl);
+    const r1 = document.createElement('div'); r1.className = 'rs-row';
+    const t1 = document.createElement('span'); t1.className = 'rs-type'; t1.textContent = 'Gestione';
+    r1.appendChild(t1); r1.appendChild(makeBadge(gKey, 'g')); col2.appendChild(r1);
+    const r2 = document.createElement('div'); r2.className = 'rs-row';
+    const t2 = document.createElement('span'); t2.className = 'rs-type'; t2.textContent = 'Comunicazione';
+    r2.appendChild(t2); r2.appendChild(makeBadge(cKey, 'c')); col2.appendChild(r2);
+    return col2;
+  };
+
+  const toGLabel = t.toG ? resolveLabel(t.toG) : null;
+  const toCLabel = t.toC ? resolveLabel(t.toC) : null;
+  const currentGName = G[selG]?.id;
+  const currentCName = C[selC]?.id;
+
+  rs.appendChild(makeRS('Stato prima', selG, selC));
+  rs.appendChild(makeRS('Stato dopo', t.toG, t.toC === 'INV' ? selC : t.toC));
+  inner.appendChild(rs);
+
+  // Message
+  const hr1 = document.createElement('hr'); hr1.className = 'result-divider'; inner.appendChild(hr1);
+  const mf = document.createElement('div'); mf.className = 'result-field';
+  const mh = document.createElement('h4'); mh.textContent = 'Comunicazione all\'utente';
+  const mp = document.createElement('p'); mp.textContent = t.msg;
+  mf.appendChild(mh); mf.appendChild(mp); inner.appendChild(mf);
+
+  // Note
+  if (t.note) {
+    const hr2 = document.createElement('hr'); hr2.className = 'result-divider'; inner.appendChild(hr2);
+    const nf = document.createElement('div'); nf.className = 'result-field';
+    const nh = document.createElement('h4'); nh.textContent = 'Note';
+    const np = document.createElement('p'); np.textContent = t.note;
+    nf.appendChild(nh); nf.appendChild(np); inner.appendChild(nf);
+  }
+
+  // Continue button
+  const canCont = t.toG && !t.toG.startsWith('(') && t.toG !== null && G[t.toG];
+  const btn = document.createElement('button');
+  btn.className = 'continue-btn';
+  btn.textContent = 'Continua da questo stato →';
+  btn.disabled = !canCont;
+  if (!canCont) btn.title = 'Stato risultante non determinabile automaticamente';
+  btn.onclick = () => {
+    const newG = t.toG;
+    const newC = t.toC === 'INV' ? selC : (t.toC && C[t.toC] ? t.toC : null);
+    history.push({ g: newG, c: newC, evento: t.evento });
+    selG = newG; selC = newC; selT = null;
+    renderAll();
+  };
+  inner.appendChild(btn);
+  body.appendChild(inner);
+  dot.className = 'step-dot done'; dot.textContent = '✓';
+}
+
+// ── RENDER HISTORY ────────────────────────────────────
+function renderHistory() {
+  const bar = document.getElementById('history-bar');
+  const flow = document.getElementById('history-flow');
+  const visible = history.length >= 1 && history[0].c !== null;
+  bar.style.display = visible ? 'block' : 'none';
+  if (!visible) return;
+  flow.innerHTML = '';
+
+  history.forEach((step, i) => {
+    if (i > 0 && step.evento) {
+      const sep = document.createElement('div'); sep.className = 'h-sep';
+      const arr = document.createElement('div'); arr.className = 'h-arrow'; arr.textContent = '→';
+      const ev = document.createElement('div'); ev.className = 'h-evento'; ev.textContent = step.evento;
+      sep.appendChild(ev); sep.appendChild(arr);
+      flow.appendChild(sep);
+    }
+    const st = document.createElement('div'); st.className = 'h-state';
+    const gi = G[step.g]; const ci = C[step.c];
+    if (gi) {
+      const b = document.createElement('span'); b.className = 'h-badge';
+      b.style.cssText = `background:${gi.bg};color:${gi.text};border-color:${gi.dot}`;
+      b.textContent = gi.id; st.appendChild(b);
+    }
+    if (ci) {
+      const b = document.createElement('span'); b.className = 'h-badge';
+      b.style.cssText = `background:${ci.bg};color:${ci.text};border-color:${ci.dot}`;
+      b.textContent = ci.id; st.appendChild(b);
+    }
+    flow.appendChild(st);
+  });
+}
+
+// ── MAIN RENDER ───────────────────────────────────────
+function renderAll() {
+  renderHistory();
+  renderG();
+  renderC();
+  renderE();
+  renderR();
+}
+
+function resetAll() {
+  selG = null; selC = null; selT = null; history = [];
+  renderAll();
+}
+
+renderAll();
+
+// ── PASSWORD GATE ──────────────────────────────────────
+(function() {
+  const PASS = 'qff24pb';
+  const KEY  = 'qf_f24_auth';
+  const gate  = document.getElementById('gate');
+  const input = document.getElementById('pwInput');
+  const btn   = document.getElementById('pwBtn');
+  const err   = document.getElementById('pwError');
+
+  function unlock() { gate.classList.add('hidden'); }
+
+  if (sessionStorage.getItem(KEY) === '1') { unlock(); return; }
+
+  function attempt() {
+    if (input.value === PASS) {
+      sessionStorage.setItem(KEY, '1');
+      unlock();
+    } else {
+      input.classList.add('error');
+      err.classList.add('visible');
+      input.value = '';
+      input.focus();
+    }
+  }
+
+  btn.addEventListener('click', attempt);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') attempt(); });
+  input.addEventListener('input', () => {
+    input.classList.remove('error');
+    err.classList.remove('visible');
+  });
+})();
+</script>
+</body>
+</html>
