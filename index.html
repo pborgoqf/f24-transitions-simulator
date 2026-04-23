@@ -930,8 +930,8 @@ function resetAll() {
 renderAll();
 
 // ── PASSWORD GATE ──────────────────────────────────────
-(function() {
-  const PASS = 'qff24pb';
+(async function() {
+  const HASH = '197a91b456707498a4f1cf4bd1f9c5f79a617c2699acc8e77355ea7e75e2deb1';
   const KEY  = 'qf_f24_auth';
   const gate  = document.getElementById('gate');
   const input = document.getElementById('pwInput');
@@ -942,8 +942,14 @@ renderAll();
 
   if (sessionStorage.getItem(KEY) === '1') { unlock(); return; }
 
-  function attempt() {
-    if (input.value === PASS) {
+  async function sha256(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  async function attempt() {
+    const hash = await sha256(input.value);
+    if (hash === HASH) {
       sessionStorage.setItem(KEY, '1');
       unlock();
     } else {
