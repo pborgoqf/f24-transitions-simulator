@@ -3,211 +3,334 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simulatore Transizioni F24 — Quickfisco</title>
+  <title>Simulatore Transizioni F24 v2.5 — Quickfisco</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }
 
-    /* ── PASSWORD GATE ── */
+    /* ── GATE ── */
     #gate {
-      position: fixed; inset: 0; z-index: 9999;
-      background: #0f172a;
+      position: fixed; inset: 0; z-index: 9999; background: #0f172a;
       display: flex; align-items: center; justify-content: center;
     }
     #gate.hidden { display: none; }
     .gate-card {
       background: #1e293b; border: 1px solid #334155; border-radius: 16px;
-      padding: 40px 44px; width: 360px;
-      display: flex; flex-direction: column; gap: 22px;
+      padding: 40px 44px; width: 360px; display: flex; flex-direction: column; gap: 20px;
     }
-    .gate-logo { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #64748b; }
+    .gate-logo { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #475569; }
     .gate-title { font-size: 20px; font-weight: 700; color: #f1f5f9; }
-    .gate-sub { font-size: 13px; color: #64748b; margin-top: -10px; }
-    .gate-field { display: flex; flex-direction: column; gap: 8px; }
-    .gate-field label { font-size: 12px; font-weight: 600; color: #94a3b8; letter-spacing: .05em; }
+    .gate-sub { font-size: 13px; color: #64748b; margin-top: -8px; }
+    .gate-field { display: flex; flex-direction: column; gap: 7px; }
+    .gate-field label { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #64748b; text-transform: uppercase; }
     .gate-field input {
       background: #0f172a; border: 1px solid #334155; border-radius: 8px;
       padding: 10px 14px; font-size: 15px; color: #f1f5f9; outline: none;
       transition: border-color .15s; font-family: inherit;
     }
     .gate-field input:focus { border-color: #6366f1; }
-    .gate-field input.error { border-color: #ef4444; }
+    .gate-field input.err { border-color: #ef4444; }
     .gate-err { font-size: 12px; color: #ef4444; display: none; }
     .gate-err.on { display: block; }
     .gate-btn {
-      background: #6366f1; border: none; border-radius: 8px;
-      padding: 12px; font-size: 14px; font-weight: 700; color: white;
-      cursor: pointer; transition: background .15s;
+      background: #6366f1; border: none; border-radius: 8px; padding: 11px;
+      font-size: 14px; font-weight: 700; color: white; cursor: pointer; transition: background .15s;
     }
     .gate-btn:hover { background: #4f46e5; }
 
-    /* ── APP SHELL ── */
+    /* ── SHELL ── */
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: #f1f5f9; color: #1e293b;
       display: flex; flex-direction: column; height: 100vh; overflow: hidden;
     }
 
     /* ── HEADER ── */
     .hdr {
-      background: #0f172a; color: white;
-      padding: 12px 22px; display: flex; justify-content: space-between;
-      align-items: center; flex-shrink: 0;
+      background: #0f172a; color: white; padding: 11px 20px;
+      display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
     }
-    .hdr-left h1 { font-size: 15px; font-weight: 700; }
-    .hdr-left p  { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .hdr h1 { font-size: 14px; font-weight: 700; }
+    .hdr p  { font-size: 11px; color: #475569; margin-top: 2px; }
     .reset-btn {
-      background: none; border: 1px solid #334155; border-radius: 7px;
-      padding: 6px 13px; font-size: 12px; color: #94a3b8; cursor: pointer;
-      transition: all .15s;
+      background: none; border: 1px solid #1e293b; border-radius: 7px;
+      padding: 5px 13px; font-size: 11px; color: #64748b; cursor: pointer; transition: all .15s;
     }
-    .reset-btn:hover { border-color: #64748b; color: white; }
+    .reset-btn:hover { border-color: #475569; color: #94a3b8; }
 
-    /* ── HISTORY BAR ── */
+    /* ── HISTORY ── */
     .hist {
       background: white; border-bottom: 1px solid #e2e8f0;
-      padding: 9px 20px; flex-shrink: 0; display: none; overflow-x: auto;
+      padding: 8px 18px; flex-shrink: 0; display: none; overflow-x: auto;
     }
-    .hist-flow { display: flex; align-items: center; gap: 0; white-space: nowrap; min-height: 34px; }
-    .hist-step { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
-    .hist-badge {
-      font-size: 10px; font-weight: 600; padding: 2px 8px;
-      border-radius: 10px; border: 1.5px solid transparent;
+    .hist-inner { display: flex; align-items: center; gap: 0; white-space: nowrap; min-height: 32px; }
+    .h-step { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+    .h-badge {
+      font-size: 10px; font-weight: 600; padding: 2px 7px;
+      border-radius: 9px; border: 1.5px solid transparent; display: block;
     }
-    .hist-sep { display: flex; flex-direction: column; align-items: center; padding: 0 9px; flex-shrink: 0; }
-    .hist-arrow { color: #cbd5e1; font-size: 16px; line-height: 1; }
-    .hist-evento { font-size: 9px; color: #94a3b8; max-width: 110px; text-align: center; white-space: normal; line-height: 1.3; }
+    .h-sep { display: flex; flex-direction: column; align-items: center; padding: 0 10px; flex-shrink: 0; }
+    .h-arrow { color: #cbd5e1; font-size: 14px; }
+    .h-label { font-size: 9px; color: #94a3b8; max-width: 100px; text-align: center; white-space: normal; line-height: 1.3; }
 
-    /* ── COLUMNS WRAPPER ── */
-    .cols-wrap {
-      flex: 1; display: flex; align-items: stretch;
-      padding: 12px 14px; gap: 0; overflow: hidden;
+    /* ── COLUMNS WRAP ── */
+    .cols {
+      flex: 1; display: flex; padding: 12px 14px; gap: 0;
+      overflow: hidden; align-items: stretch;
     }
     .col-sep {
       display: flex; align-items: center; color: #cbd5e1;
-      font-size: 18px; padding: 0 7px; flex-shrink: 0; align-self: center;
-      height: 40px;
+      font-size: 18px; padding: 0 6px; flex-shrink: 0; align-self: center; height: 36px;
     }
 
-    /* ── SINGLE COLUMN ── */
+    /* ── COLUMN BASE ── */
     .col {
       background: white; border: 1px solid #e2e8f0; border-radius: 12px;
       display: flex; flex-direction: column; overflow: hidden;
       transition: opacity .2s; flex-shrink: 0;
     }
-    .col.inactive { opacity: .4; pointer-events: none; }
-    .col-c { width: 208px; }
-    .col-g { width: 208px; }
-    .col-e { width: 296px; }
-    .col-r { flex: 1; min-width: 280px; }
+    .col.off { opacity: .35; pointer-events: none; }
+
+    .col-c  { width: 196px; }
+    .col-g  { width: 196px; }
+    .col-t  { width: 340px; }
+    .col-d  { flex: 1; min-width: 260px; }
 
     .col-head {
-      padding: 13px 15px 11px; border-bottom: 1px solid #f1f5f9;
-      display: flex; align-items: flex-start; gap: 9px; flex-shrink: 0;
+      padding: 12px 14px 10px; border-bottom: 1px solid #f1f5f9;
+      display: flex; align-items: flex-start; gap: 8px; flex-shrink: 0;
     }
     .step-dot {
-      width: 20px; height: 20px; border-radius: 50%;
-      background: #3b82f6; color: white;
-      font-size: 10px; font-weight: 700;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; margin-top: 1px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700;
     }
-    .step-dot.done { background: #22c55e; font-size: 12px; }
-    .step-dot.idle { background: #e2e8f0; color: #94a3b8; }
-    .col-head-text {}
+    .dot-active { background: #3b82f6; color: white; }
+    .dot-done   { background: #22c55e; color: white; }
+    .dot-idle   { background: #e2e8f0; color: #94a3b8; }
     .col-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #1e293b; }
-    .col-sub   { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+    .col-sub   { font-size: 10px; color: #94a3b8; margin-top: 2px; line-height: 1.3; }
 
     .col-body { flex: 1; overflow-y: auto; padding: 8px; }
 
-    /* ── STATE ITEMS (cols 1 & 2) ── */
-    .state-item {
-      display: flex; align-items: center; gap: 9px;
-      padding: 8px 10px; border-radius: 8px; cursor: pointer;
-      transition: background .12s; margin-bottom: 3px;
-      border: 1.5px solid transparent;
-    }
-    .state-item:hover:not(.disabled) { background: #f8fafc; }
-    .state-item.selected { background: #f0f9ff; border-color: #bae6fd; }
-    .state-item.disabled { opacity: .25; cursor: not-allowed; }
-    .state-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .state-label { font-size: 12px; font-weight: 600; line-height: 1.3; }
-    .state-badge {
-      display: inline-flex; align-items: center;
-      font-size: 10px; font-weight: 700; padding: 2px 7px;
-      border-radius: 10px; border: 1.5px solid transparent;
-    }
-    .state-always { font-size: 9px; color: #94a3b8; margin-top: 1px; }
-
-    /* ── EVENT LIST (col 3) ── */
-    .cat-header {
-      font-size: 9px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .08em; color: #94a3b8; padding: 8px 10px 4px;
-    }
-    .evt-item {
-      display: flex; align-items: flex-start; gap: 8px;
-      padding: 9px 10px; border-radius: 8px; cursor: pointer;
+    /* ── STATE ITEMS (col 1 & 2) ── */
+    .s-item {
+      display: flex; align-items: center; gap: 8px; padding: 8px 9px;
+      border-radius: 8px; cursor: pointer; border: 1.5px solid transparent;
       transition: all .12s; margin-bottom: 2px;
-      border: 1.5px solid transparent;
     }
-    .evt-item:hover { background: #f8fafc; }
-    .evt-item.selected { background: #eff6ff; border-color: #bae6fd; }
-    .cat-pill {
+    .s-item:hover:not(.s-off) { background: #f8fafc; }
+    .s-item.s-sel { background: #f0f9ff; border-color: #bae6fd; }
+    .s-item.s-off { opacity: .22; cursor: not-allowed; }
+    .s-dot  { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .s-name { font-size: 12px; font-weight: 600; }
+    .s-note { font-size: 9px; color: #94a3b8; margin-top: 1px; }
+
+    /* ── TRANSITION CARDS (col 3) ── */
+    .cat-hdr {
       font-size: 9px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .05em; padding: 2px 6px; border-radius: 4px;
-      white-space: nowrap; flex-shrink: 0; margin-top: 1px;
+      letter-spacing: .08em; color: #94a3b8; padding: 10px 10px 4px;
     }
-    .cat-sistema   { background: #e0f2fe; color: #0369a1; }
-    .cat-utente    { background: #f0fdf4; color: #15803d; }
-    .cat-operatore { background: #fef3c7; color: #b45309; }
-    .cat-ec        { background: #fee2e2; color: #991b1b; }
-    .evt-text { font-size: 12px; line-height: 1.4; color: #334155; flex: 1; }
+    .cat-hdr:first-child { padding-top: 4px; }
 
-    /* ── RESULT PANEL (col 4) ── */
-    .result-empty { padding: 40px 20px; text-align: center; color: #94a3b8; font-size: 13px; }
-    .result-body  { padding: 14px 16px; }
+    .t-card {
+      padding: 10px 11px; border-radius: 9px; cursor: pointer;
+      border: 1.5px solid transparent; transition: all .12s; margin-bottom: 3px;
+    }
+    .t-card:hover { background: #f8fafc; border-color: #e2e8f0; }
+    .t-card.t-sel { background: #eff6ff; border-color: #93c5fd; }
 
-    .urgency-banner {
+    .t-dest { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-bottom: 5px; }
+    .t-badge {
+      font-size: 10px; font-weight: 700; padding: 2px 8px;
+      border-radius: 10px; border: 1.5px solid transparent; white-space: nowrap;
+    }
+    .t-inv { font-size: 10px; color: #94a3b8; font-style: italic; }
+    .t-undef { font-size: 10px; color: #cbd5e1; }
+    .t-arrow { font-size: 11px; color: #94a3b8; }
+
+    .t-quando { font-size: 11px; color: #64748b; line-height: 1.4; }
+    .t-urgent-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #ef4444; margin-right: 4px; flex-shrink: 0; }
+
+    .cat-pill {
+      display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .05em; padding: 1px 5px; border-radius: 3px; margin-bottom: 4px;
+    }
+    .cp-sis { background: #e0f2fe; color: #0369a1; }
+    .cp-ute { background: #f0fdf4; color: #15803d; }
+    .cp-ops { background: #fef3c7; color: #b45309; }
+    .cp-ec  { background: #fee2e2; color: #991b1b; }
+
+    /* ── DETAIL PANEL (col 4) ── */
+    .d-empty { padding: 32px 16px; text-align: center; color: #94a3b8; font-size: 12px; line-height: 1.6; }
+    .d-body  { padding: 14px 15px; }
+
+    .d-urgency {
       background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px;
-      padding: 9px 13px; color: #991b1b; font-size: 12px; font-weight: 600;
-      display: flex; align-items: flex-start; gap: 6px; margin-bottom: 14px; line-height: 1.4;
+      padding: 9px 12px; color: #991b1b; font-size: 11px; font-weight: 600;
+      margin-bottom: 12px; line-height: 1.5;
     }
 
-    .states-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-    .state-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; }
-    .state-box-title { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #94a3b8; margin-bottom: 8px; }
-    .state-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
-    .state-row:last-child { margin-bottom: 0; }
-    .state-row-lbl { font-size: 10px; color: #94a3b8; width: 72px; flex-shrink: 0; }
-    .inv-text { font-size: 10px; color: #94a3b8; font-style: italic; }
-    .na-text  { font-size: 10px; color: #cbd5e1; font-style: italic; }
+    .d-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .d-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 9px 11px; }
+    .d-box-title { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #94a3b8; margin-bottom: 7px; }
+    .d-row { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
+    .d-row:last-child { margin-bottom: 0; }
+    .d-row-lbl { font-size: 10px; color: #94a3b8; width: 68px; flex-shrink: 0; }
 
-    .result-field { border-top: 1px solid #f1f5f9; padding-top: 12px; margin-top: 0; }
-    .result-field + .result-field { margin-top: 10px; }
-    .result-field-title { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #94a3b8; margin-bottom: 5px; }
-    .result-field-body { font-size: 12px; color: #334155; line-height: 1.5; white-space: pre-line; }
+    .d-field { border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 8px; }
+    .d-field-title { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #94a3b8; margin-bottom: 5px; }
+    .d-field-body { font-size: 12px; color: #334155; line-height: 1.5; white-space: pre-line; }
 
-    .continue-btn {
-      margin-top: 14px; width: 100%; padding: 9px 16px;
+    .cont-btn {
+      margin-top: 14px; width: 100%; padding: 9px;
       background: #0f172a; color: white; border: none; border-radius: 8px;
-      font-size: 12px; font-weight: 600; cursor: pointer; transition: background .12s;
+      font-size: 12px; font-weight: 600; cursor: pointer; transition: background .15s;
     }
-    .continue-btn:hover { background: #1e293b; }
-    .continue-btn:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
+    .cont-btn:hover { background: #1e293b; }
+    .cont-btn:disabled { background: #f1f5f9; color: #94a3b8; cursor: not-allowed; }
+
+    .no-trans { padding: 20px 12px; text-align: center; color: #94a3b8; font-size: 12px; line-height: 1.6; }
+
+    /* ── TABS ── */
+    .tabs {
+      background: #0f172a; padding: 0 20px; flex-shrink: 0;
+      display: flex; gap: 0; border-bottom: 1px solid #1e293b;
+    }
+    .tab {
+      background: none; border: none; color: #64748b; padding: 10px 18px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      border-bottom: 2px solid transparent; transition: all .15s;
+      font-family: inherit;
+    }
+    .tab:hover { color: #94a3b8; }
+    .tab.active { color: #f1f5f9; border-bottom-color: #6366f1; }
+
+    /* ── VIEWS ── */
+    .view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .view[hidden] { display: none !important; }
+
+    /* ── TABLE VIEW ── */
+    #view-table { padding: 16px 20px; overflow-y: auto; background: #f8fafc; }
+    .tbl-section { margin-bottom: 28px; }
+    .tbl-section:last-child { margin-bottom: 0; }
+    .tbl-cat-hdr {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 10px; padding: 6px 0;
+    }
+    .tbl-cat-pill {
+      font-size: 10px; font-weight: 700; padding: 4px 10px;
+      border-radius: 12px; text-transform: uppercase; letter-spacing: .08em;
+    }
+    .tbl-cat-pill.cp-sis { background:#eff6ff; color:#1e3a8a; }
+    .tbl-cat-pill.cp-ute { background:#fdf4ff; color:#86198f; }
+    .tbl-cat-pill.cp-ops { background:#ecfeff; color:#155e75; }
+    .tbl-cat-pill.cp-ec  { background:#fff7ed; color:#7c2d12; }
+    .tbl-cat-count { font-size: 11px; color: #94a3b8; font-weight: 500; }
+
+    .tbl-wrap {
+      background: white; border: 1px solid #e2e8f0; border-radius: 10px;
+    }
+    .tbl thead th:first-child { border-top-left-radius: 10px; }
+    .tbl thead th:last-child  { border-top-right-radius: 10px; }
+    .tbl tbody tr:last-child td:first-child { border-bottom-left-radius: 10px; }
+    .tbl tbody tr:last-child td:last-child  { border-bottom-right-radius: 10px; }
+    .tbl {
+      width: 100%; border-collapse: separate; border-spacing: 0; font-size: 11px;
+    }
+    .tbl thead th {
+      position: sticky; top: 0; z-index: 5;
+      background: #f8fafc; padding: 8px 10px; text-align: left;
+      font-size: 10px; font-weight: 700; color: #64748b;
+      text-transform: uppercase; letter-spacing: .06em;
+      border-bottom: 1px solid #e2e8f0;
+      box-shadow: 0 1px 0 #e2e8f0;
+    }
+    .tbl td {
+      padding: 10px; vertical-align: top; border-bottom: 1px solid #f1f5f9;
+      color: #334155; line-height: 1.5;
+    }
+    .tbl tr:last-child td { border-bottom: none; }
+    .tbl tr:hover td { background: #fafbfc; }
+
+    .tbl-states { display: flex; flex-direction: column; gap: 4px; min-width: 130px; }
+    .tbl-arrow { color: #cbd5e1; font-size: 16px; text-align: center; padding: 0 4px; }
+    .tbl-quando { font-size: 11px; max-width: 280px; }
+    .tbl-msg { font-size: 11px; max-width: 240px; color: #475569; }
+    .tbl-note { font-size: 10.5px; max-width: 260px; color: #64748b; }
+    .tbl-urgenza {
+      display: block; font-size: 10px; color: #b91c1c;
+      background: #fee2e2; border-radius: 6px; padding: 4px 7px;
+      margin-bottom: 5px; font-weight: 600;
+    }
+    .tbl-badge {
+      display: inline-block; font-size: 10px; font-weight: 600;
+      padding: 2px 7px; border-radius: 9px;
+      border: 1.5px solid transparent; white-space: nowrap;
+    }
+    .tbl-inv { font-size: 10px; color: #94a3b8; font-style: italic; }
+    .tbl-undef { font-size: 10px; color: #94a3b8; font-style: italic; }
+    .tbl-xx {
+      display: inline-block; font-size: 10px; font-weight: 600;
+      padding: 2px 7px; border-radius: 9px;
+      background: #fee2e2; color: #7f1d1d; border: 1.5px solid #dc2626;
+    }
+
+    /* ── TABLE V2.5 — STRUCTURE ── */
+    .tbl-block { margin-bottom: 36px; }
+    .tbl-block:last-child { margin-bottom: 0; }
+    .tbl-block-hdr {
+      font-size: 15px; font-weight: 700; color: #0f172a;
+      padding: 6px 0; margin-bottom: 12px;
+      border-bottom: 2px solid #cbd5e1;
+    }
+    .tbl-section { margin-bottom: 22px; }
+    .tbl-sub-hdr {
+      font-size: 12px; font-weight: 700; color: #1e293b;
+      margin-bottom: 6px; padding-top: 4px;
+      letter-spacing: .01em;
+    }
+    .tbl-intro {
+      font-size: 11px; color: #475569; line-height: 1.5;
+      margin: 4px 0 8px; padding: 8px 10px;
+      background: #f1f5f9; border-radius: 6px;
+      border-left: 3px solid #94a3b8;
+    }
+    .tbl-intro b, .tbl-intro strong { color: #1e293b; }
+    .tbl-intro code {
+      background: #e2e8f0; padding: 1px 5px; border-radius: 4px;
+      font-family: ui-monospace, monospace; font-size: 10px;
+    }
+    .tbl-note-block {
+      font-size: 11px; color: #475569; line-height: 1.5;
+      margin-top: 6px; padding: 6px 10px;
+      background: #fffbeb; border-radius: 6px;
+      border-left: 3px solid #f59e0b;
+    }
+    .tbl-note-block strong { color: #78350f; }
+    .tbl-subtable-lbl {
+      font-size: 11px; font-weight: 600; color: #475569;
+      margin: 8px 0 4px; padding-left: 2px;
+    }
+    .tbl-cell-content {
+      display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px;
+    }
+    .tbl-urg-icon { font-size: 11px; }
   </style>
 </head>
 <body>
 
-<!-- PASSWORD GATE -->
+<!-- GATE -->
 <div id="gate">
   <div class="gate-card">
     <div class="gate-logo">Quickfisco</div>
     <div>
-      <div class="gate-title">Simulatore Transizioni F24</div>
+      <div class="gate-title">Simulatore F24 v2.5</div>
       <div class="gate-sub">Accesso riservato al team interno</div>
     </div>
     <div class="gate-field">
-      <label>PASSWORD</label>
-      <input type="password" id="pwInput" placeholder="••••••••" autocomplete="current-password" />
+      <label>Password</label>
+      <input type="password" id="pwIn" placeholder="••••••••" autocomplete="current-password" />
       <span class="gate-err" id="pwErr">Password errata. Riprova.</span>
     </div>
     <button class="gate-btn" id="pwBtn">Accedi</button>
@@ -216,350 +339,458 @@
 
 <!-- HEADER -->
 <div class="hdr">
-  <div class="hdr-left">
-    <h1>Simulatore Transizioni di Stato — Microservizio F24</h1>
-    <p>Seleziona lo stato comunicazione + gestione per esplorare le transizioni possibili</p>
+  <div>
+    <h1>Simulatore Transizioni di Stato — Microservizio F24 · v2.5</h1>
+    <p>Seleziona comunicazione + gestione per vedere tutte le transizioni possibili</p>
   </div>
-  <button class="reset-btn" onclick="resetAll()">↺ Ricomincia</button>
+  <button class="reset-btn" onclick="reset()">↺ Ricomincia</button>
 </div>
 
-<!-- HISTORY BAR -->
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" id="tab-explore" onclick="switchView('explore')">Esplora</button>
+  <button class="tab" id="tab-table" onclick="switchView('table')">Tabella transizioni</button>
+</div>
+
+<!-- VIEW: EXPLORE -->
+<div class="view" id="view-explore">
+
+<!-- HISTORY -->
 <div class="hist" id="hist">
-  <div class="hist-flow" id="hist-flow"></div>
+  <div class="hist-inner" id="hist-inner"></div>
 </div>
 
 <!-- COLUMNS -->
-<div class="cols-wrap">
+<div class="cols">
 
   <!-- COL 1 — Comunicazione -->
   <div class="col col-c" id="col-c">
     <div class="col-head">
-      <div class="step-dot idle" id="dot-c">1</div>
-      <div class="col-head-text">
-        <div class="col-title">Stato comunicazione</div>
+      <div class="step-dot dot-active" id="d1">1</div>
+      <div>
+        <div class="col-title">Comunicazione</div>
         <div class="col-sub">Cosa sa o ha risposto l'utente</div>
       </div>
     </div>
-    <div class="col-body" id="body-c"></div>
+    <div class="col-body" id="b-c"></div>
   </div>
 
   <div class="col-sep">›</div>
 
   <!-- COL 2 — Gestione -->
-  <div class="col col-g inactive" id="col-g">
+  <div class="col col-g off" id="col-g">
     <div class="col-head">
-      <div class="step-dot idle" id="dot-g">2</div>
-      <div class="col-head-text">
-        <div class="col-title">Stato gestione</div>
+      <div class="step-dot dot-idle" id="d2">2</div>
+      <div>
+        <div class="col-title">Gestione</div>
         <div class="col-sub">Cosa deve fare l'operatore</div>
       </div>
     </div>
-    <div class="col-body" id="body-g"></div>
+    <div class="col-body" id="b-g"></div>
   </div>
 
   <div class="col-sep">›</div>
 
   <!-- COL 3 — Transizioni -->
-  <div class="col col-e inactive" id="col-e">
+  <div class="col col-t off" id="col-t">
     <div class="col-head">
-      <div class="step-dot idle" id="dot-e">3</div>
-      <div class="col-head-text">
+      <div class="step-dot dot-idle" id="d3">3</div>
+      <div>
         <div class="col-title">Transizioni possibili</div>
-        <div class="col-sub">Seleziona evento o azione</div>
+        <div class="col-sub">Dove puoi arrivare e come</div>
       </div>
     </div>
-    <div class="col-body" id="body-e"></div>
+    <div class="col-body" id="b-t"></div>
   </div>
 
   <div class="col-sep">›</div>
 
-  <!-- COL 4 — Risultato -->
-  <div class="col col-r inactive" id="col-r">
+  <!-- COL 4 — Dettaglio -->
+  <div class="col col-d off" id="col-d">
     <div class="col-head">
-      <div class="step-dot idle" id="dot-r">4</div>
-      <div class="col-head-text">
-        <div class="col-title">Risultato</div>
-        <div class="col-sub">Nuovi stati, comunicazione, note</div>
+      <div class="step-dot dot-idle" id="d4">4</div>
+      <div>
+        <div class="col-title">Dettaglio</div>
+        <div class="col-sub">Messaggi, urgenza e note</div>
       </div>
     </div>
-    <div class="col-body" id="body-r">
-      <div class="result-empty">Seleziona un evento nella colonna precedente per vedere il risultato.</div>
+    <div class="col-body" id="b-d">
+      <div class="d-empty">Seleziona una transizione per vedere il dettaglio.</div>
     </div>
   </div>
 
 </div>
 
-<script>
-// ── DATA ──────────────────────────────────────────────────────────
+</div><!-- /view-explore -->
 
-const G = {
-  DP: { id:'DA PAGARE',           bg:'#dbeafe', text:'#1d4ed8', dot:'#3b82f6' },
-  MP: { id:'MESSO IN PAGAMENTO',  bg:'#fef3c7', text:'#b45309', dot:'#f59e0b' },
-  RP: { id:'RIMUOVERE PAGAMENTO', bg:'#fee2e2', text:'#991b1b', dot:'#ef4444' },
-  QC: { id:'QUIETANZA CARICATA',  bg:'#dcfce7', text:'#15803d', dot:'#22c55e' },
-  NG: { id:'NON GESTIRE',         bg:'#f3f4f6', text:'#374151', dot:'#6b7280' },
-  AN: { id:'ANOMALIA',            bg:'#fce7f3', text:'#9d174d', dot:'#ec4899' },
-  XX: { id:'ANNULLATO',           bg:'#f9fafb', text:'#6b7280', dot:'#d1d5db' },
-};
+<!-- VIEW: TABLE -->
+<div class="view" id="view-table" hidden>
+  <div id="tbl-root"></div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+// DATA
+// ─────────────────────────────────────────────────────────────────
 
 const C = {
-  NC: { id:'NON COMUNICATO',  bg:'#f1f5f9', text:'#475569', dot:'#94a3b8' },
-  AR: { id:'ATTESA RISPOSTA', bg:'#eff6ff', text:'#1d4ed8', dot:'#60a5fa' },
-  PQ: { id:'PAGA QUICKFISCO', bg:'#f0fdf4', text:'#15803d', dot:'#4ade80' },
-  PU: { id:'PAGA UTENTE',     bg:'#f5f3ff', text:'#5b21b6', dot:'#a78bfa' },
-  NR: { id:'NESSUNA RISPOSTA',bg:'#fff7ed', text:'#c2410c', dot:'#fb923c' },
-  DC: { id:'DA CONTATTARE',   bg:'#fefce8', text:'#854d0e', dot:'#fbbf24' },
+  NC: { id:'NON COMUNICATO',   bg:'#fff7ed', text:'#9a3412', dot:'#f97316' }, // arancione
+  AR: { id:'ATTESA RISPOSTA',  bg:'#fefce8', text:'#713f12', dot:'#ca8a04' }, // giallo
+  PQ: { id:'PAGA QUICKFISCO',  bg:'#f5f3ff', text:'#4c1d95', dot:'#7c3aed' }, // viola
+  PU: { id:'PAGA UTENTE',      bg:'#fee2e2', text:'#7f1d1d', dot:'#dc2626' }, // rosso
+  NR: { id:'NESSUNA RISPOSTA', bg:'#f3f4f6', text:'#374151', dot:'#6b7280' }, // grigio
+  DC: { id:'DA CONTATTARE',    bg:'#fee2e2', text:'#7f1d1d', dot:'#dc2626' }, // rosso
 };
 
-// Valid G states for each C state (explicit pairs only; AN and XX always included)
+const G = {
+  DP: { id:'DA PAGARE',           bg:'#fefce8', text:'#713f12', dot:'#ca8a04' }, // giallo
+  MP: { id:'MESSO IN PAGAMENTO',  bg:'#f5f3ff', text:'#4c1d95', dot:'#7c3aed' }, // viola
+  NP: { id:'NON PAGARE',          bg:'#fef3c7', text:'#78350f', dot:'#f59e0b' }, // ambra (transitorio — operatore deve confermare)
+  RP: { id:'RIMUOVERE PAGAMENTO', bg:'#fee2e2', text:'#7f1d1d', dot:'#dc2626' }, // rosso
+  QC: { id:'QUIETANZA CARICATA',  bg:'#dcfce7', text:'#14532d', dot:'#16a34a' }, // verde
+  NG: { id:'NON GESTIRE',         bg:'#f3f4f6', text:'#374151', dot:'#6b7280' }, // grigio
+  AN: { id:'ANOMALIA',            bg:'#fce7f3', text:'#9d174d', dot:'#ec4899' }, // rosa (stato speciale)
+};
+// ANNULLATO non è stato di partenza — è solo destinazione
+
+// Gestione valida per ogni stato comunicazione
 const VALID_G = {
-  NC: ['DP', 'MP', 'AN', 'XX'],
-  AR: ['DP', 'MP', 'AN', 'XX'],
-  PQ: ['DP', 'MP', 'QC', 'AN', 'XX'],
-  PU: ['NG', 'RP', 'AN', 'XX'],
-  NR: ['RP', 'AN', 'XX'],
-  DC: ['DP', 'AN', 'XX'],
+  NC: ['DP', 'MP'],
+  AR: ['DP', 'MP'],
+  PQ: ['DP', 'MP', 'QC'],
+  PU: ['NP', 'NG', 'RP'],
+  NR: ['NP', 'RP'],
+  DC: [], // DA CONTATTARE è solo stato comunicazione — non si combina con uno stato gestione
+  // ANOMALIA appare sotto ogni C (usa fromC:'*')
 };
+// AN sempre aggiunto in renderG
 
-const CATS = {
-  sistema:   { label:'Sistema',    cls:'cat-sistema' },
-  utente:    { label:'Utente',     cls:'cat-utente' },
-  operatore: { label:'Operatore',  cls:'cat-operatore' },
-  ec:        { label:'Edge case',  cls:'cat-ec' },
-};
-
-// fromG / fromC: state key or '*' (any)
-// toG / toC: state key, 'INV' (invariato), or null (dipende dall'operatore)
+// ─────────────────────────────────────────────────────────────────
+// TRANSIZIONI
+// fromG / fromC: chiave o '*' (qualsiasi)
+// toG / toC: chiave, 'INV' (invariato), 'XX' (ANNULLATO), null (scelta operatore)
+// quando: frase breve che spiega quando accade
+// ─────────────────────────────────────────────────────────────────
 const T = [
-  // ── SISTEMA ──
-  { fromG:'DP', fromC:'NC', cat:'sistema',
-    evento:'T-30 trigger — utente con delega attiva',
+
+  // ── SISTEMA ──────────────────────────────────────────────────
+  { fromG:'DP', fromC:'NC', cat:'sis',
+    quando: 'Il cron T-30 scatta e l\'utente ha la delega attiva per il pagamento F24',
     toG:'DP', toC:'AR',
-    msg:'📨 Messaggio Tipo B inviato — senza allegato. Lista F24 + importi + deadline risposta. CTA verso Dashboard e Tasse e scadenze.',
-    urgenza:null, note:'Un unico messaggio per scadenza, raggruppa tutti gli F24 con la stessa data.' },
+    msg:'📨 Messaggio Tipo B inviato (senza allegato) — nome adempimento + scadenza + deadline risposta. CTA verso Dashboard e Tasse e scadenze.',
+    urgenza:null, note:'Un messaggio separato per ogni F24 (mai raggruppato). Nessun importo, nessun file allegato — presidio anti-doppio pagamento.' },
 
-  { fromG:'DP', fromC:'NC', cat:'sistema',
-    evento:'T-30 trigger — utente senza delega attiva',
-    toG:'NG', toC:null,
-    msg:'📎 Messaggio Tipo A inviato — con F24 allegato (un messaggio per F24). Pagamento autonomo.',
-    urgenza:null, note:'Utente senza delega — nessun follow-up richiesto dal microservizio.' },
-
-  { fromG:'MP', fromC:'NC', cat:'sistema',
-    evento:'T-30 trigger — utente con delega attiva',
+  { fromG:'MP', fromC:'NC', cat:'sis',
+    quando: 'Il cron T-30 scatta — il pagamento era già stato predisposto su DATEV',
     toG:'MP', toC:'AR',
-    msg:'📨 Messaggio Tipo B inviato — senza allegato.',
-    urgenza:null, note:'Il messaggio T-30 parte anche se l\'F24 è già in MESSO IN PAGAMENTO.' },
+    msg:'📨 Messaggio Tipo B inviato (senza allegato). Il messaggio parte anche se l\'F24 è già MESSO IN PAGAMENTO.',
+    urgenza:null, note:'L\'utente deve comunque confermare la propria preferenza.' },
 
-  { fromG:'DP', fromC:'NC', cat:'sistema',
-    evento:'F24 arriva al microservizio con ≤ T-3 lavorativi dalla scadenza',
+  { fromG:'DP', fromC:'NC', cat:'sis',
+    quando: 'L\'F24 entra nel microservizio con scadenza ≤ T-3 giorni lavorativi (caso "DA CONTATTARE")',
     toG:'DP', toC:'DC',
     msg:'Nessun messaggio automatico. In "Tasse e scadenze" compare: "Ti contatteremo a breve".',
-    urgenza:null, note:'Nessun pulsante di scelta mostrato all\'utente. L\'operatore deve contattarlo esternamente.' },
+    urgenza:null, note:'Questo caso salta sia il trigger T-30 sia il T-3 senza risposta — non c\'è alcun cron automatico. L\'operatore contatta manualmente l\'utente e aggiorna gli stati via menu … → "Aggiorna stati F24" o CTA inline "Inserisci risposta".' },
 
-  { fromG:'DP', fromC:'AR', cat:'sistema',
-    evento:'T-3 lavorativi scaduti senza risposta (EC01)',
-    toG:'NG', toC:'PU',
-    msg:'📎 F24 allegato inviato automaticamente. Messaggio con guida al pagamento e invito a "Tasse e scadenze".',
-    urgenza:null, note:'Transizione automatica — nessuna azione richiesta all\'operatore.' },
+  { fromG:'DP', fromC:'NC', cat:'sis',
+    quando: 'Il cron T-30 scatta ma l\'utente non ha la delega attiva',
+    toG:'NG', toC:null,
+    msg:'📎 Messaggio Tipo A inviato — un messaggio per F24 con file allegato. Pagamento autonomo.',
+    urgenza:null, note:'Nessun follow-up richiesto dal microservizio — l\'utente paga in autonomia.' },
 
-  { fromG:'MP', fromC:'AR', cat:'sistema',
-    evento:'T-3 lavorativi scaduti senza risposta (EC01)',
-    toG:'RP', toC:'PU',
-    msg:'📎 F24 allegato inviato automaticamente all\'utente.',
-    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi', note:'Operatore deve rimuovere il pagamento da DATEV e poi cliccare "Pagamento rimosso".' },
+  { fromG:'DP', fromC:'AR', cat:'sis',
+    quando: 'Scadono i T-3 giorni lavorativi senza che l\'utente abbia risposto (EC01)',
+    toG:'NP', toC:'NR',
+    msg:'📎 F24 allegato inviato automaticamente con guida al pagamento. File reso disponibile in sezione Documenti immediato.',
+    urgenza:null, note:'Regola consolidata: T-3 senza risposta → SEMPRE NESSUNA RISPOSTA (mai PAGA UTENTE). L\'operatore deve poi confermare con "Non gestire F24" per chiudere in NON GESTIRE.' },
 
-  // ── UTENTE ──
-  { fromG:'DP', fromC:'AR', cat:'utente',
-    evento:'Utente risponde "Paga Quickfisco"',
+  { fromG:'MP', fromC:'AR', cat:'sis',
+    quando: 'Scadono i T-3 giorni lavorativi senza risposta — il pagamento era già predisposto ma l\'utente non ha mai confermato (EC01)',
+    toG:'RP', toC:'NR',
+    msg:'⏳ F24 allegato inviato dopo che l\'operatore clicca "Pagamento rimosso" e conferma la modal.',
+    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi e all\'operatore assegnato', note:'L\'utente non ha mai espresso preferenza. L\'operatore deve rimuovere il pagamento da DATEV e cliccare "Pagamento rimosso" — il flusso si chiude in NESSUNA RISPOSTA + NON GESTIRE.' },
+
+  // ── UTENTE ───────────────────────────────────────────────────
+  { fromG:'DP', fromC:'AR', cat:'ute',
+    quando: 'L\'utente clicca "Paga Quickfisco" nella dashboard',
     toG:'DP', toC:'PQ',
     msg:'Nessun messaggio.',
-    urgenza:null, note:'Operatore può procedere con la messa in pagamento su DATEV.' },
+    urgenza:null, note:'L\'operatore può ora procedere con la messa in pagamento su DATEV.' },
 
-  { fromG:'MP', fromC:'AR', cat:'utente',
-    evento:'Utente risponde "Paga Quickfisco"',
+  { fromG:'MP', fromC:'AR', cat:'ute',
+    quando: 'L\'utente clicca "Paga Quickfisco" — il pagamento era già predisposto',
     toG:'MP', toC:'PQ',
     msg:'Nessun messaggio.',
-    urgenza:null, note:'Pagamento già predisposto — operatore può procedere con la quietanza.' },
+    urgenza:null, note:'Pagamento già predisposto — l\'operatore può procedere direttamente con la quietanza.' },
 
-  { fromG:'DP', fromC:'AR', cat:'utente',
-    evento:'Utente risponde "Pago io"',
-    toG:'NG', toC:'PU',
-    msg:'📎 F24 allegato inviato immediatamente.',
-    urgenza:null, note:'Invio immediato alla scelta. L\'utente gestisce autonomamente il pagamento.' },
+  { fromG:'DP', fromC:'AR', cat:'ute',
+    quando: 'L\'utente clicca "Pago io" nella dashboard',
+    toG:'NP', toC:'PU',
+    msg:'📎 F24 allegato inviato immediatamente. File reso disponibile in sezione Documenti.',
+    urgenza:null, note:'L\'utente gestisce il pagamento in autonomia. L\'operatore deve poi confermare con "Non gestire F24" per chiudere in NON GESTIRE.' },
 
-  { fromG:'MP', fromC:'AR', cat:'utente',
-    evento:'Utente risponde "Pago io"',
+  { fromG:'MP', fromC:'AR', cat:'ute',
+    quando: 'L\'utente clicca "Pago io" — il pagamento era già predisposto su DATEV',
     toG:'RP', toC:'PU',
     msg:'⏳ F24 allegato inviato solo dopo che l\'operatore clicca "Pagamento rimosso" e conferma la modal.',
-    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi', note:'File non inviato finché l\'operatore non rimuove da DATEV. Presidio anti-doppio pagamento.' },
+    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi e all\'operatore assegnato', note:'Il file non viene inviato finché l\'operatore non rimuove il pagamento da DATEV. Presidio anti-doppio pagamento.' },
 
-  { fromG:'DP', fromC:'PQ', cat:'utente',
-    evento:'Utente cambia preferenza a "Pago io" (via supporto)',
-    toG:'NG', toC:'PU',
-    msg:'📎 F24 allegato inviato immediatamente.',
-    urgenza:null, note:'Cambio di preferenza gestito dal supporto clienti.' },
+  { fromG:'DP', fromC:'PQ', cat:'ops',
+    quando: 'L\'operatore aggiorna gli stati via "Aggiorna stati F24" su richiesta del supporto clienti — l\'utente vuole cambiare preferenza a "Pago io"',
+    toG:'NP', toC:'PU',
+    msg:'📎 F24 allegato inviato immediatamente. File in sezione Documenti.',
+    urgenza:null, note:'L\'utente non può modificare autonomamente una risposta già espressa. Il cambio avviene solo tramite supporto clienti. L\'operatore deve poi confermare con "Non gestire F24" per chiudere in NON GESTIRE.' },
 
-  { fromG:'MP', fromC:'PQ', cat:'utente',
-    evento:'Utente cambia preferenza a "Pago io" (via supporto)',
+  { fromG:'MP', fromC:'PQ', cat:'ops',
+    quando: 'L\'operatore aggiorna gli stati via "Aggiorna stati F24" su richiesta del supporto clienti — l\'utente vuole cambiare preferenza a "Pago io" ma il pagamento era già predisposto',
     toG:'RP', toC:'PU',
     msg:'⏳ F24 allegato inviato dopo "Pagamento rimosso" + conferma modal.',
-    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi', note:'Idem MESSO IN PAGAMENTO + ATTESA RISPOSTA.' },
+    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi e all\'operatore assegnato', note:'L\'utente non può modificare autonomamente una risposta già espressa. Il cambio avviene solo tramite supporto clienti.' },
 
-  // ── OPERATORE ──
-  { fromG:'DP', fromC:'*', cat:'operatore',
-    evento:'Operatore: mette in pagamento su DATEV',
+  // ── OPERATORE ─────────────────────────────────────────────────
+  { fromG:'DP', fromC:'*', cat:'ops',
+    quando: 'L\'operatore predispone il pagamento su DATEV e aggiorna lo stato',
     toG:'MP', toC:'INV',
     msg:'Nessun messaggio.',
-    urgenza:null, note:'L\'operatore può predisporre il pagamento anche mesi prima della scadenza, prima del T-30.' },
+    urgenza:null, note:'L\'operatore può predisporre il pagamento in qualsiasi momento, anche prima del T-30.' },
 
-  { fromG:'MP', fromC:'PQ', cat:'operatore',
-    evento:'Operatore: carica quietanza',
-    toG:'QC', toC:'PQ',
-    msg:'Nessun messaggio (silenzioso).',
-    urgenza:null, note:'File quietanza salvato nei Documenti utente senza notifica automatica.' },
+  { fromG:'MP', fromC:'*', cat:'ops',
+    quando: 'L\'operatore carica il file quietanza dopo aver effettuato il pagamento',
+    toG:'QC', toC:'INV',
+    msg:'Nessun messaggio (silenzioso). Il file viene salvato nei Documenti utente.',
+    urgenza:null, note:'CTA "Carica quietanza" disponibile su qualsiasi MIP. La quietanza viene emessa solo post-scadenza, quindi de facto la combinazione effettiva è MIP + PAGA QUICKFISCO.' },
 
-  { fromG:'RP', fromC:'*', cat:'operatore',
-    evento:'Operatore: "Pagamento rimosso" — file F24 esiste',
+  { fromG:'NP', fromC:'*', cat:'ops',
+    quando: 'L\'operatore clicca la CTA inline "Non gestire F24" e conferma la modal',
     toG:'NG', toC:'INV',
-    msg:'📎 F24 allegato inviato dopo conferma modal. Modal avvisa: "Verrà inviato il file F24 all\'utente".',
-    urgenza:null, note:'L\'operatore deve prima rimuovere il pagamento da DATEV, poi confermare nella modal.' },
+    msg:'Nessun messaggio (file F24 già in Documenti).',
+    urgenza:null, note:'Modal di conferma con avviso DATEV ("Assicurati di non aver messo in pagamento su DATEV"). Nessuna nota obbligatoria. Stato finale.' },
 
-  { fromG:'RP', fromC:'*', cat:'operatore',
-    evento:'Operatore: "Pagamento rimosso" — file eliminato (EC05 Sc. 2)',
+  { fromG:'QC', fromC:'*', cat:'ops',
+    quando: 'L\'operatore rimuove la quietanza per correggerne una errata',
+    toG:'MP', toC:'INV',
+    msg:'Nessun messaggio.',
+    urgenza:null, note:'L\'F24 torna in MESSO IN PAGAMENTO per permettere il caricamento di una quietanza corretta.' },
+
+  { fromG:'RP', fromC:'*', cat:'ops',
+    quando: 'L\'operatore rimuove il pagamento da DATEV e clicca "Pagamento rimosso" — il file F24 esiste ancora',
+    toG:'NG', toC:'INV',
+    msg:'📎 F24 allegato inviato dopo conferma modal. La modal avvisa: "Verrà inviato il file F24 all\'utente".',
+    urgenza:null, note:'L\'operatore deve prima rimuovere da DATEV, poi confermare nella modal.' },
+
+  { fromG:'RP', fromC:'*', cat:'ops',
+    quando: 'L\'operatore clicca "Pagamento rimosso" ma il file F24 è già stato eliminato dall\'adempimento (EC05 Sc.2)',
     toG:'XX', toC:'INV',
     msg:'Nessun messaggio. Modal e invio file soppressi.',
-    urgenza:null, note:'Il file F24 è stato eliminato dall\'adempimento — non esiste più e non può essere inviato.' },
+    urgenza:null, note:'Il file F24 non esiste più — nessun invio possibile.' },
 
-  { fromG:'QC', fromC:'*', cat:'operatore',
-    evento:'Operatore: rimuove quietanza (menu …)',
-    toG:'MP', toC:'INV',
-    msg:'Nessun messaggio.',
-    urgenza:null, note:'L\'F24 torna in MESSO IN PAGAMENTO per consentire il caricamento di una quietanza corretta.' },
-
-  { fromG:'DP', fromC:'DC', cat:'operatore',
-    evento:'Operatore: aggiorna stati dopo contatto manuale (menu …)',
+  { fromG:'*', fromC:'DC', cat:'ops',
+    quando: 'L\'operatore ha contattato l\'utente manualmente e registra la risposta',
     toG:null, toC:null,
     msg:'Dipende dagli stati scelti dall\'operatore.',
-    urgenza:null, note:'L\'operatore ha contattato l\'utente esternamente e aggiorna gli stati via menu … → "Aggiorna stati F24". Nota obbligatoria. Può impostare qualsiasi combinazione di stati.' },
+    urgenza:null, note:'CTA inline "Inserisci risposta" oppure menu … → "Aggiorna stati F24". Nota obbligatoria + evento in History. DC è solo stato comunicazione — non ha uno stato gestione associato.' },
 
-  { fromG:'AN', fromC:'*', cat:'operatore',
-    evento:'Operatore: "Cambia stato manualmente" (menu …)',
+  { fromG:'AN', fromC:'*', cat:'ops',
+    quando: 'L\'operatore risolve l\'anomalia tramite menu … → "Aggiorna stati F24"',
     toG:null, toC:null,
     msg:'Dipende dagli stati scelti dall\'operatore.',
-    urgenza:null, note:'Unica modalità di uscita da ANOMALIA. Nota obbligatoria + evento generato in History. L\'operatore ha già contattato l\'utente manualmente.' },
+    urgenza:null, note:'Unica modalità di uscita da ANOMALIA. Nota obbligatoria + evento in History.' },
 
-  { fromG:'*', fromC:'*', cat:'operatore',
-    evento:'Operatore: annulla F24 (menu … → "Annulla F24")',
+  { fromG:'*', fromC:'*', cat:'ops',
+    quando: 'L\'operatore annulla manualmente l\'F24 tramite menu … → "Annulla F24"',
     toG:'XX', toC:'INV',
     msg:'Nessun messaggio.',
-    urgenza:null, note:'Tutte le automazioni vengono bloccate. Reversibile solo tramite "Cambia stato manualmente" con nota obbligatoria.' },
+    urgenza:null, note:'Tutte le automazioni vengono bloccate. Reversibile solo tramite "Aggiorna stati F24" con nota obbligatoria.' },
 
-  { fromG:'XX', fromC:'*', cat:'operatore',
-    evento:'Operatore: reverte ANNULLATO — caso eccezionale',
-    toG:null, toC:null,
-    msg:'Nessun messaggio automatico.',
-    urgenza:null, note:'Caso eccezionale. Nota obbligatoria + evento generato in History. L\'operatore imposta qualsiasi stato ritenuto corretto.' },
-
-  // ── EDGE CASES ──
+  // ── EDGE CASES ────────────────────────────────────────────────
   { fromG:'DP', fromC:'*', cat:'ec',
-    evento:'⚠️ EC02 — Utente revoca la delega',
-    toG:'NG', toC:'PU',
-    msg:'📎 F24 allegato inviato immediatamente.',
-    urgenza:null, note:'Nessuna azione richiesta all\'operatore.' },
+    quando: 'L\'utente revoca la delega a Quickfisco per il pagamento F24 (EC02)',
+    toG:'NP', toC:'PU',
+    msg:'📎 F24 allegato inviato immediatamente. File in sezione Documenti.',
+    urgenza:null, note:'L\'operatore deve poi confermare con "Non gestire F24" per chiudere in NON GESTIRE.' },
 
   { fromG:'MP', fromC:'*', cat:'ec',
-    evento:'⚠️ EC02 — Utente revoca la delega',
+    quando: 'L\'utente revoca la delega — il pagamento era già predisposto su DATEV (EC02)',
     toG:'RP', toC:'PU',
     msg:'⏳ F24 allegato inviato solo dopo "Pagamento rimosso" + conferma modal.',
-    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi', note:'File non inviato finché l\'operatore non rimuove da DATEV e conferma la modal.' },
+    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi e all\'operatore assegnato', note:'File non inviato finché l\'operatore non rimuove da DATEV.' },
 
   { fromG:'AN', fromC:'*', cat:'ec',
-    evento:'⚠️ EC02 — Utente revoca la delega',
+    quando: 'L\'utente revoca la delega mentre c\'è un\'anomalia aperta (EC02)',
     toG:'AN', toC:'INV',
     msg:'Nessun messaggio.',
-    urgenza:'🔴 Rimane in cima al listing — operatore deve risolvere l\'anomalia prima di gestire la revoca', note:'La revoca viene processata solo dopo che l\'anomalia è stata risolta manualmente.' },
+    urgenza:'🔴 Rimane in cima al listing — l\'anomalia deve essere risolta prima di gestire la revoca', note:'La revoca viene processata solo dopo che l\'anomalia è stata risolta manualmente.' },
 
   { fromG:'DP', fromC:'NC', cat:'ec',
-    evento:'⚠️ EC05 — Operatore rimuove F24 dall\'adempimento',
+    quando: 'L\'operatore rimuove l\'F24 dall\'adempimento prima di qualsiasi comunicazione (EC05)',
     toG:'NG', toC:'INV',
-    msg:'Nessun messaggio per il vecchio F24.\n→ Nuovo F24 (stesso slot): DA PAGARE / NON COMUNICATO — rientra nel flusso standard.',
-    urgenza:null, note:'Riga del vecchio F24 rimane visibile con sfondo rosso ⚠️ "F24 eliminato". Alert scompare quando raggiunge ANNULLATO.' },
+    msg:'Nessun messaggio al vecchio F24. Il nuovo F24 (stesso slot) entra in DA PAGARE / NON COMUNICATO e rientra nel flusso standard.',
+    urgenza:null, note:'La riga del vecchio F24 rimane visibile con sfondo rosso ⚠️ "F24 eliminato". L\'alert scompare quando raggiunge ANNULLATO.' },
 
   { fromG:'MP', fromC:'NC', cat:'ec',
-    evento:'⚠️ EC05 — Operatore rimuove F24 dall\'adempimento',
+    quando: 'L\'operatore rimuove l\'F24 — era già predisposto ma non ancora comunicato (EC05)',
     toG:'RP', toC:'INV',
-    msg:'Nessun messaggio. File eliminato → modal soppressa → vecchio F24 procede verso ANNULLATO.\n→ Nuovo F24 (stesso slot): DA PAGARE / NON COMUNICATO.',
-    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi', note:'Modal e invio file soppressi: il file è stato eliminato dall\'adempimento e non esiste più.' },
+    msg:'Nessun messaggio. File eliminato → modal soppressa → vecchio F24 procede verso ANNULLATO. Il nuovo F24 entra in DA PAGARE / NON COMUNICATO.',
+    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi e all\'operatore assegnato', note:'Modal e invio file soppressi — il file non esiste più.' },
 
   { fromG:'DP', fromC:'AR', cat:'ec',
-    evento:'⚠️ EC05 — Operatore rimuove F24 dall\'adempimento',
+    quando: 'L\'operatore rimuove l\'F24 dopo che l\'utente aveva già ricevuto il messaggio T-30 (EC05)',
     toG:'NG', toC:'INV',
-    msg:'Nessun messaggio per il vecchio F24.\n→ Nuovo F24 (stesso slot): ANOMALIA 🔴 — utente ha già ricevuto messaggio con importo errato.',
-    urgenza:'🔴 Alert urgente per il nuovo F24 + email a Giusi', note:'L\'utente ha già ricevuto il messaggio. Contatto manuale urgente per comunicare la variazione.' },
+    msg:'Nessun messaggio al vecchio F24. Il nuovo F24 entra in ANOMALIA 🔴 — l\'utente ha ricevuto un messaggio con dati non più validi.',
+    urgenza:'🔴 Alert urgente per il nuovo F24 + email a Giusi e all\'operatore assegnato', note:'Contatto manuale urgente per comunicare all\'utente la variazione dell\'importo.' },
 
   { fromG:'DP', fromC:'PQ', cat:'ec',
-    evento:'⚠️ EC05 — Operatore rimuove F24 dall\'adempimento',
+    quando: 'L\'operatore rimuove l\'F24 dopo che l\'utente aveva già confermato "Paga Quickfisco" (EC05)',
     toG:'NG', toC:'INV',
-    msg:'Nessun messaggio per il vecchio F24.\n→ Nuovo F24 (stesso slot): ANOMALIA 🔴 — utente ha già confermato un importo errato.',
-    urgenza:'🔴 Alert urgente per il nuovo F24 + email a Giusi', note:'L\'utente ha già confermato. Contatto manuale urgente per comunicare la variazione e raccogliere nuova conferma.' },
+    msg:'Nessun messaggio al vecchio F24. Il nuovo F24 entra in ANOMALIA 🔴 — l\'utente ha confermato un importo non più valido.',
+    urgenza:'🔴 Alert urgente per il nuovo F24 + email a Giusi e all\'operatore assegnato', note:'Contatto manuale per raccogliere una nuova conferma sul nuovo importo.' },
 
   { fromG:'DP', fromC:'PU', cat:'ec',
-    evento:'⚠️ EC05 — Operatore rimuove F24 dall\'adempimento',
+    quando: 'L\'operatore rimuove l\'F24 dopo che l\'utente aveva già ricevuto il file (EC05)',
     toG:'NG', toC:'INV',
-    msg:'Nessun messaggio per il vecchio F24.\n→ Nuovo F24 (stesso slot): ANOMALIA 🔴 — utente ha già il file F24 non più valido.',
-    urgenza:'🔴 Situazione emergenziale — utente potrebbe aver già pagato il file sbagliato', note:'Contatto immediato. Verificare se il pagamento è già stato effettuato.' },
+    msg:'Nessun messaggio al vecchio F24. Il nuovo F24 entra in ANOMALIA 🔴 — l\'utente potrebbe aver già pagato con un file non valido.',
+    urgenza:'🔴 Situazione emergenziale — verificare immediatamente se il pagamento è già stato effettuato', note:'Contatto immediato.' },
 
   { fromG:'DP', fromC:'*', cat:'ec',
-    evento:'⚠️ EC03 — Profilo archiviato (contratto rescisso)',
+    quando: 'Il profilo utente viene archiviato (contratto rescisso) — EC03',
     toG:'XX', toC:'INV',
     msg:'Nessun messaggio.',
     urgenza:null, note:'Transizione automatica all\'archiviazione del profilo.' },
 
   { fromG:'MP', fromC:'*', cat:'ec',
-    evento:'⚠️ EC03 — Profilo archiviato (contratto rescisso)',
+    quando: 'Il profilo viene archiviato — il pagamento era predisposto (EC03)',
     toG:'RP', toC:'INV',
-    msg:'Nessun messaggio. Operatore deve gestire manualmente.',
-    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi', note:'Dopo rimozione da DATEV → ANNULLATO (non NON GESTIRE, come nel flusso normale).' },
+    msg:'Nessun messaggio. L\'operatore gestisce la rimozione da DATEV → ANNULLATO.',
+    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi e all\'operatore assegnato', note:'In EC03, dopo "Pagamento rimosso" il vecchio F24 va in ANNULLATO (non NON GESTIRE come nel flusso normale).' },
+
+  { fromG:'RP', fromC:'*', cat:'ec',
+    quando: 'Il profilo viene archiviato — l\'F24 era già in RIMUOVERE PAGAMENTO (EC03)',
+    toG:'INV', toC:'INV',
+    msg:'Nessun messaggio.',
+    urgenza:'🔴 Già urgente — rimane in cima al listing', note:'Già in carico all\'operatore. Dopo "Pagamento rimosso" → ANNULLATO (non NG).' },
+
+  { fromG:'QC', fromC:'*', cat:'ec',
+    quando: 'Il profilo viene archiviato — l\'F24 era già in QUIETANZA CARICATA (EC03)',
+    toG:'INV', toC:'INV',
+    msg:'Nessun messaggio.',
+    urgenza:null, note:'Pagamento già completato — invariato.' },
+
+  { fromG:'NP', fromC:'*', cat:'ec',
+    quando: 'Il profilo viene archiviato — l\'F24 era già in NON PAGARE (EC03)',
+    toG:'XX', toC:'INV',
+    msg:'Nessun messaggio.',
+    urgenza:null, note:'Transizione automatica → ANNULLATO (in EC03 non si passa per NON GESTIRE).' },
 
   { fromG:'NG', fromC:'*', cat:'ec',
-    evento:'⚠️ EC03 — Profilo archiviato (contratto rescisso)',
+    quando: 'Il profilo viene archiviato — l\'F24 era già in gestione autonoma (EC03)',
     toG:'XX', toC:'INV',
     msg:'Nessun messaggio.',
     urgenza:null, note:'Transizione automatica.' },
 
   { fromG:'AN', fromC:'*', cat:'ec',
-    evento:'⚠️ EC03 — Profilo archiviato (contratto rescisso)',
+    quando: 'Il profilo viene archiviato mentre c\'è un\'anomalia aperta (EC03)',
     toG:'XX', toC:'INV',
     msg:'Nessun messaggio.',
-    urgenza:null, note:'L\'anomalia non è più azionabile — profilo archiviato.' },
+    urgenza:null, note:'L\'anomalia non è più azionabile — il profilo è archiviato.' },
+
+  // ── EC04 — SCADENZA DELEGA (modello a 5 casi) ────────────────
+  // Caso 1 — PAGA QUICKFISCO: nessuna transizione (continua in gestione fino a quietanza)
+
+  // Caso 2 — Senza mandato esplicito: NON COMUNICATO o ATTESA RISPOSTA → PAGA UTENTE
+  { fromG:'DP', fromC:'NC', cat:'ec',
+    quando: 'La delega scade senza rinnovo (cuscinetto 7gg esaurito) — utente NON aveva ancora ricevuto comunicazione (EC04 Caso 2)',
+    toG:'NP', toC:'PU',
+    msg:'📎 Al T-30 messaggio Tipo A "delega non attiva" + file F24 in sezione Documenti.',
+    urgenza:null, note:'L\'F24 resta nel listing. Operatore conferma con "Non gestire F24" → NON GESTIRE.' },
+
+  { fromG:'DP', fromC:'AR', cat:'ec',
+    quando: 'La delega scade senza rinnovo — utente aveva ricevuto T-30 ma non aveva ancora risposto (EC04 Caso 2)',
+    toG:'NP', toC:'PU',
+    msg:'📎 File F24 disponibile immediatamente in sezione Documenti.',
+    urgenza:null, note:'Operatore conferma con "Non gestire F24" → NON GESTIRE.' },
+
+  { fromG:'MP', fromC:'NC', cat:'ec',
+    quando: 'La delega scade senza rinnovo — operatore aveva predisposto pagamento ma utente non aveva ancora ricevuto comunicazione (EC04 Caso 2)',
+    toG:'RP', toC:'PU',
+    msg:'⏳ File F24 disponibile dopo "Pagamento rimosso" + conferma modal.',
+    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi e all\'operatore assegnato', note:'Operatore rimuove da DATEV → "Pagamento rimosso" → NON GESTIRE.' },
+
+  { fromG:'MP', fromC:'AR', cat:'ec',
+    quando: 'La delega scade senza rinnovo — operatore aveva predisposto pagamento e utente non aveva risposto (EC04 Caso 2)',
+    toG:'RP', toC:'PU',
+    msg:'⏳ File F24 disponibile dopo "Pagamento rimosso" + conferma modal.',
+    urgenza:'🔴 Alert urgente in cima al listing + email a Giusi e all\'operatore assegnato', note:'Operatore rimuove da DATEV → "Pagamento rimosso" → NON GESTIRE.' },
+
+  // Caso 3 — Flusso già avviato: NESSUNA RISPOSTA o PAGA UTENTE invariato (NP / RP restano)
+  { fromG:'NP', fromC:'NR', cat:'ec',
+    quando: 'La delega scade senza rinnovo — F24 era già in NON PAGARE per T-3 senza risposta (EC04 Caso 3)',
+    toG:'INV', toC:'INV',
+    msg:'Nessun messaggio aggiuntivo (file già in Documenti).',
+    urgenza:null, note:'Flusso già avviato — operatore conferma "Non gestire F24" come da flusso standard.' },
+
+  { fromG:'NP', fromC:'PU', cat:'ec',
+    quando: 'La delega scade senza rinnovo — F24 era già in NON PAGARE per scelta utente "Pago io" (EC04 Caso 3)',
+    toG:'INV', toC:'INV',
+    msg:'Nessun messaggio aggiuntivo (file già in Documenti).',
+    urgenza:null, note:'Flusso già avviato — operatore conferma "Non gestire F24" come da flusso standard.' },
+
+  { fromG:'RP', fromC:'*', cat:'ec',
+    quando: 'La delega scade senza rinnovo — F24 era già in RIMUOVERE PAGAMENTO (EC04 Caso 3)',
+    toG:'INV', toC:'INV',
+    msg:'Nessun messaggio aggiuntivo.',
+    urgenza:'🔴 Già urgente — rimane in cima', note:'Operatore continua flusso "Pagamento rimosso" → NON GESTIRE.' },
+
+  // Caso 4 — DA CONTATTARE: gestione manuale
+  { fromG:'*', fromC:'DC', cat:'ec',
+    quando: 'La delega scade senza rinnovo — F24 era in DA CONTATTARE (EC04 Caso 4)',
+    toG:null, toC:null,
+    msg:'Nessuna automazione — operatore decide caso per caso.',
+    urgenza:null, note:'DC è solo stato comunicazione (no stato gestione). Operatore contatta utente esternamente e registra la scelta tramite "Inserisci risposta" o "Aggiorna stati F24".' },
+
+  // Caso 5 — Stati finali invariati (eccetto ANOMALIA → ANNULLATO)
+  { fromG:'AN', fromC:'*', cat:'ec',
+    quando: 'La delega scade senza rinnovo mentre c\'è un\'anomalia aperta (EC04 Caso 5)',
+    toG:'XX', toC:'INV',
+    msg:'Nessun messaggio.',
+    urgenza:null, note:'Delega scaduta — anomalia non più azionabile.' },
 ];
 
-// ── STATE ─────────────────────────────────────────────────────────
+const CATS = {
+  sis: { label:'Sistema',    cls:'cp-sis' },
+  ute: { label:'Utente',     cls:'cp-ute' },
+  ops: { label:'Operatore',  cls:'cp-ops' },
+  ec:  { label:'Edge case',  cls:'cp-ec'  },
+};
+
+// ─────────────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────────────
 let selC = null, selG = null, selT = null;
 let history = [];
 
-// ── HELPERS ───────────────────────────────────────────────────────
-function makeBadge(key, type) {
-  const info = type === 'g' ? G[key] : C[key];
+// ─────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────
+function badge(key, type, small) {
+  const info = type === 'c' ? C[key] : G[key];
   if (!info) return null;
   const el = document.createElement('span');
-  el.className = 'state-badge';
-  el.style.cssText = `background:${info.bg};color:${info.text};border-color:${info.dot}`;
+  el.className = 't-badge';
+  if (small) el.style.fontSize = '9px';
+  el.style.cssText += `background:${info.bg};color:${info.text};border-color:${info.dot}`;
   el.textContent = info.id;
   return el;
 }
 
-function makeInvBadge() {
+function invEl() {
   const el = document.createElement('span');
-  el.className = 'inv-text';
-  el.textContent = '(invariato)';
+  el.className = 't-inv'; el.textContent = '(invariato)';
   return el;
 }
 
-function makeNaBadge() {
+function undefEl(txt) {
   const el = document.createElement('span');
-  el.className = 'na-text';
-  el.textContent = '—';
+  el.className = 't-undef'; el.textContent = txt || '—';
   return el;
 }
 
@@ -571,315 +802,890 @@ function getTransitions() {
   });
 }
 
-// ── RENDER: COMUNICAZIONE (COL 1) ─────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// RENDER COL 1 — COMUNICAZIONE
+// ─────────────────────────────────────────────────────────────────
 function renderC() {
-  const body = document.getElementById('body-c');
-  const dot  = document.getElementById('dot-c');
+  const body = document.getElementById('b-c');
+  const dot  = document.getElementById('d1');
   body.innerHTML = '';
   Object.entries(C).forEach(([key, s]) => {
     const item = document.createElement('div');
-    item.className = 'state-item' + (selC === key ? ' selected' : '');
-    const dot2 = document.createElement('div');
-    dot2.className = 'state-dot';
-    dot2.style.background = s.dot;
-    const lbl = document.createElement('div');
-    lbl.className = 'state-label';
-    lbl.style.color = s.text;
-    lbl.textContent = s.id;
-    item.appendChild(dot2); item.appendChild(lbl);
+    item.className = 's-item' + (selC === key ? ' s-sel' : '');
+    const d = document.createElement('div');
+    d.className = 's-dot'; d.style.background = s.dot;
+    const n = document.createElement('div');
+    n.className = 's-name'; n.style.color = s.text; n.textContent = s.id;
+    item.appendChild(d); item.appendChild(n);
     item.onclick = () => {
-      selC = key; selG = null; selT = null;
-      history = [{ c: s.id, g: null, evento: null }];
+      selC = key; selT = null;
+      // DA CONTATTARE non ha stato gestione associato — si salta col 2 (selG = '*' fa match con transizioni fromG:'*')
+      if (key === 'DC') {
+        selG = '*';
+        history = [{ cKey: key, gKey: null, label: null }];
+      } else {
+        selG = null;
+        history = [{ cKey: key, gKey: null, label: null }];
+      }
       renderAll();
     };
     body.appendChild(item);
   });
-  dot.className = 'step-dot' + (selC ? ' done' : ' idle');
+  dot.className = 'step-dot ' + (selC ? 'dot-done' : 'dot-active');
   dot.textContent = selC ? '✓' : '1';
 }
 
-// ── RENDER: GESTIONE (COL 2) ──────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// RENDER COL 2 — GESTIONE
+// ─────────────────────────────────────────────────────────────────
 function renderG() {
-  const col  = document.getElementById('col-g');
-  const body = document.getElementById('body-g');
-  const dot  = document.getElementById('dot-g');
+  const col   = document.getElementById('col-g');
+  const body  = document.getElementById('b-g');
+  const dot   = document.getElementById('d2');
+  const title = document.querySelector('#col-g .col-title');
+  const sub   = document.querySelector('#col-g .col-sub');
   body.innerHTML = '';
 
-  if (!selC) { col.classList.add('inactive'); return; }
-  col.classList.remove('inactive');
+  if (!selC) {
+    col.classList.add('off');
+    title.textContent = 'Gestione';
+    sub.textContent = 'Cosa deve fare l\'operatore';
+    dot.className = 'step-dot dot-idle'; dot.textContent = '2';
+    return;
+  }
+  col.classList.remove('off');
 
-  const validKeys = VALID_G[selC] || [];
+  // DA CONTATTARE — col 2 è un bypass, nessuna selezione richiesta
+  if (selC === 'DC') {
+    title.textContent = 'Gestione';
+    sub.textContent = 'Non applicabile per DA CONTATTARE';
+    const msg = document.createElement('div');
+    msg.style.cssText = 'padding:16px 12px;font-size:12px;color:#94a3b8;line-height:1.6;text-align:center;';
+    msg.innerHTML = '<div style="font-size:22px;margin-bottom:8px">⤵</div>DA CONTATTARE è solo stato comunicazione.<br>Non si combina con uno stato gestione — la riga del listing mostra solo il badge DA CONTATTARE.';
+    body.appendChild(msg);
+    dot.className = 'step-dot dot-done'; dot.textContent = '✓';
+    return;
+  }
+
+  title.textContent = 'Gestione';
+  sub.textContent = 'Cosa deve fare l\'operatore';
+
+  const valid = new Set(VALID_G[selC] || []);
+  valid.add('AN'); // ANOMALIA sempre disponibile
 
   Object.entries(G).forEach(([key, s]) => {
-    const valid = validKeys.includes(key);
-    const isAlways = (key === 'AN' || key === 'XX') && !['AN','XX'].includes(key) ? false : valid;
+    const ok = valid.has(key);
     const item = document.createElement('div');
-    item.className = 'state-item' + (selG === key ? ' selected' : '') + (valid ? '' : ' disabled');
-    const dot2 = document.createElement('div');
-    dot2.className = 'state-dot';
-    dot2.style.background = valid ? s.dot : '#e2e8f0';
+    item.className = 's-item' + (selG === key ? ' s-sel' : '') + (ok ? '' : ' s-off');
+    const d = document.createElement('div');
+    d.className = 's-dot'; d.style.background = ok ? s.dot : '#e2e8f0';
     const right = document.createElement('div');
-    const lbl = document.createElement('div');
-    lbl.className = 'state-label';
-    lbl.style.color = valid ? s.text : '#94a3b8';
-    lbl.textContent = s.id;
-    right.appendChild(lbl);
-    if ((key === 'AN' || key === 'XX') && valid) {
+    const n = document.createElement('div');
+    n.className = 's-name'; n.style.color = ok ? s.text : '#94a3b8'; n.textContent = s.id;
+    right.appendChild(n);
+    if (key === 'AN' && ok) {
       const note = document.createElement('div');
-      note.className = 'state-always';
-      note.textContent = key === 'AN' ? 'stato speciale — sempre disponibile' : 'sempre disponibile';
+      note.className = 's-note'; note.textContent = 'stato speciale di sistema';
       right.appendChild(note);
     }
-    item.appendChild(dot2); item.appendChild(right);
-    if (valid) {
-      item.onclick = () => { selG = key; selT = null; renderAll(); };
-    }
+    item.appendChild(d); item.appendChild(right);
+    if (ok) item.onclick = () => { selG = key; selT = null; renderAll(); };
     body.appendChild(item);
   });
 
-  dot.className = 'step-dot' + (selG ? ' done' : ' idle');
+  dot.className = 'step-dot ' + (selG ? 'dot-done' : 'dot-idle');
   dot.textContent = selG ? '✓' : '2';
 }
 
-// ── RENDER: TRANSIZIONI (COL 3) ───────────────────────────────────
-function renderE() {
-  const col  = document.getElementById('col-e');
-  const body = document.getElementById('body-e');
-  const dot  = document.getElementById('dot-e');
+// ─────────────────────────────────────────────────────────────────
+// RENDER COL 3 — TRANSIZIONI
+// ─────────────────────────────────────────────────────────────────
+function renderT() {
+  const col  = document.getElementById('col-t');
+  const body = document.getElementById('b-t');
+  const dot  = document.getElementById('d3');
   body.innerHTML = '';
-
-  if (!selC || !selG) { col.classList.add('inactive'); return; }
-  col.classList.remove('inactive');
+  if (!selC || !selG) { col.classList.add('off'); return; }
+  col.classList.remove('off');
 
   const avail = getTransitions();
   if (!avail.length) {
-    body.innerHTML = '<div style="padding:24px 12px;text-align:center;color:#94a3b8;font-size:12px">Nessuna transizione disponibile per questa combinazione.</div>';
-    dot.className = 'step-dot idle'; dot.textContent = '3';
+    body.innerHTML = '<div class="no-trans">Nessuna transizione disponibile per questa combinazione di stati.</div>';
+    dot.className = 'step-dot dot-idle'; dot.textContent = '3';
     return;
   }
 
   const byCat = {};
   avail.forEach(t => { (byCat[t.cat] = byCat[t.cat] || []).push(t); });
-  ['sistema','utente','operatore','ec'].forEach(cat => {
+
+  ['sis','ute','ops','ec'].forEach(cat => {
     if (!byCat[cat]) return;
     const hdr = document.createElement('div');
-    hdr.className = 'cat-header';
-    hdr.textContent = CATS[cat].label;
+    hdr.className = 'cat-hdr'; hdr.textContent = CATS[cat].label;
     body.appendChild(hdr);
+
     byCat[cat].forEach(t => {
-      const item = document.createElement('div');
-      item.className = 'evt-item' + (selT === t ? ' selected' : '');
+      const card = document.createElement('div');
+      card.className = 't-card' + (selT === t ? ' t-sel' : '');
+
+      // Category pill
       const pill = document.createElement('span');
       pill.className = 'cat-pill ' + CATS[cat].cls;
       pill.textContent = CATS[cat].label;
-      const txt = document.createElement('span');
-      txt.className = 'evt-text';
-      txt.textContent = t.evento;
-      item.appendChild(pill); item.appendChild(txt);
-      item.onclick = () => { selT = t; renderAll(); };
-      body.appendChild(item);
+      card.appendChild(pill);
+
+      // Destination states
+      const dest = document.createElement('div');
+      dest.className = 't-dest';
+
+      // Arrow
+      const arr = document.createElement('span');
+      arr.className = 't-arrow'; arr.textContent = '→';
+      dest.appendChild(arr);
+
+      // toC
+      const toCKey = t.toC;
+      if (toCKey === 'INV') dest.appendChild(invEl());
+      else if (toCKey === null) dest.appendChild(undefEl('C: da operatore'));
+      else {
+        const b = badge(toCKey, 'c');
+        if (b) dest.appendChild(b);
+        else {
+          // 'XX' is ANNULLATO (not in C)
+          const sp = document.createElement('span');
+          sp.className = 't-badge';
+          sp.style.cssText = 'background:#fee2e2;color:#7f1d1d;border-color:#dc2626';
+          sp.textContent = 'ANNULLATO'; dest.appendChild(sp);
+        }
+      }
+
+      // separator dot
+      const sep = document.createElement('span');
+      sep.style.cssText = 'color:#cbd5e1;font-size:10px'; sep.textContent = '+';
+      dest.appendChild(sep);
+
+      // toG
+      const toGKey = t.toG;
+      if (toGKey === 'INV') dest.appendChild(invEl());
+      else if (toGKey === null) dest.appendChild(undefEl('G: da operatore'));
+      else if (toGKey === 'XX') {
+        const sp = document.createElement('span');
+        sp.className = 't-badge';
+        sp.style.cssText = 'background:#fee2e2;color:#7f1d1d;border-color:#dc2626';
+        sp.textContent = 'ANNULLATO'; dest.appendChild(sp);
+      } else {
+        const b = badge(toGKey, 'g');
+        if (b) dest.appendChild(b);
+      }
+
+      if (t.urgenza) {
+        const ud = document.createElement('span');
+        ud.className = 't-urgent-dot';
+        dest.appendChild(ud);
+      }
+
+      card.appendChild(dest);
+
+      // Quando
+      const q = document.createElement('div');
+      q.className = 't-quando'; q.textContent = t.quando;
+      card.appendChild(q);
+
+      card.onclick = () => { selT = t; renderAll(); };
+      body.appendChild(card);
     });
   });
 
-  dot.className = 'step-dot' + (selT ? ' done' : ' idle');
+  dot.className = 'step-dot ' + (selT ? 'dot-done' : 'dot-idle');
   dot.textContent = selT ? '✓' : '3';
 }
 
-// ── RENDER: RISULTATO (COL 4) ─────────────────────────────────────
-function renderR() {
-  const col  = document.getElementById('col-r');
-  const body = document.getElementById('body-r');
-  const dot  = document.getElementById('dot-r');
+// ─────────────────────────────────────────────────────────────────
+// RENDER COL 4 — DETTAGLIO
+// ─────────────────────────────────────────────────────────────────
+function renderD() {
+  const col  = document.getElementById('col-d');
+  const body = document.getElementById('b-d');
+  const dot  = document.getElementById('d4');
 
   if (!selT) {
-    col.classList.add('inactive');
-    body.innerHTML = '<div class="result-empty">Seleziona un evento nella colonna precedente per vedere il risultato.</div>';
-    dot.className = 'step-dot idle'; dot.textContent = '4';
+    col.classList.add('off');
+    body.innerHTML = '<div class="d-empty">Seleziona una transizione per vedere il dettaglio.</div>';
+    dot.className = 'step-dot dot-idle'; dot.textContent = '4';
     return;
   }
-  col.classList.remove('inactive');
+  col.classList.remove('off');
 
   const t = selT;
   body.innerHTML = '';
-
   const inner = document.createElement('div');
-  inner.className = 'result-body';
+  inner.className = 'd-body';
 
-  // Urgency banner
+  // Urgency
   if (t.urgenza) {
-    const b = document.createElement('div');
-    b.className = 'urgency-banner';
-    b.textContent = t.urgenza;
-    inner.appendChild(b);
+    const u = document.createElement('div');
+    u.className = 'd-urgency'; u.textContent = t.urgenza;
+    inner.appendChild(u);
   }
 
   // States grid
   const grid = document.createElement('div');
-  grid.className = 'states-grid';
+  grid.className = 'd-grid';
 
-  const makeBox = (title, gKey, cKey) => {
+  function makeBox(title, gKey, cKey) {
     const box = document.createElement('div');
-    box.className = 'state-box';
+    box.className = 'd-box';
     const ttl = document.createElement('div');
-    ttl.className = 'state-box-title';
-    ttl.textContent = title;
+    ttl.className = 'd-box-title'; ttl.textContent = title;
     box.appendChild(ttl);
 
-    // Gestione row
-    const r1 = document.createElement('div'); r1.className = 'state-row';
-    const l1 = document.createElement('span'); l1.className = 'state-row-lbl'; l1.textContent = 'Gestione';
-    r1.appendChild(l1);
-    if (gKey === 'INV') r1.appendChild(makeInvBadge());
-    else if (!gKey) r1.appendChild(makeNaBadge());
-    else { const b = makeBadge(gKey, 'g'); if (b) r1.appendChild(b); }
-    box.appendChild(r1);
+    const makeRow = (label, key, type) => {
+      const row = document.createElement('div'); row.className = 'd-row';
+      const lbl = document.createElement('span'); lbl.className = 'd-row-lbl'; lbl.textContent = label;
+      row.appendChild(lbl);
+      if (key === 'INV') row.appendChild(invEl());
+      else if (key === null) { const u = document.createElement('span'); u.className = 't-undef'; u.textContent = '—'; row.appendChild(u); }
+      else if (key === '*') { const u = document.createElement('span'); u.className = 't-undef'; u.textContent = 'n/a'; row.appendChild(u); }
+      else if (key === 'XX') {
+        const sp = document.createElement('span'); sp.className = 't-badge';
+        sp.style.cssText = 'background:#f9fafb;color:#6b7280;border-color:#d1d5db;font-size:9px';
+        sp.textContent = 'ANNULLATO'; row.appendChild(sp);
+      } else {
+        const b = badge(key, type, true);
+        if (b) row.appendChild(b);
+      }
+      return row;
+    };
 
-    // Comunicazione row
-    const r2 = document.createElement('div'); r2.className = 'state-row';
-    const l2 = document.createElement('span'); l2.className = 'state-row-lbl'; l2.textContent = 'Comunicazione';
-    r2.appendChild(l2);
-    if (cKey === 'INV') r2.appendChild(makeInvBadge());
-    else if (cKey === null) r2.appendChild(makeNaBadge());
-    else { const b = makeBadge(cKey, 'c'); if (b) r2.appendChild(b); }
-    box.appendChild(r2);
-
+    box.appendChild(makeRow('Comunicazione', cKey, 'c'));
+    box.appendChild(makeRow('Gestione', gKey, 'g'));
     return box;
-  };
+  }
 
   grid.appendChild(makeBox('Prima', selG, selC));
-  grid.appendChild(makeBox('Dopo', t.toG, t.toC));
+  const afterG = t.toG;
+  const afterC = t.toC === 'INV' ? selC : t.toC;
+  grid.appendChild(makeBox('Dopo', afterG, afterC));
   inner.appendChild(grid);
 
-  // Message
-  const mf = document.createElement('div'); mf.className = 'result-field';
-  const mt = document.createElement('div'); mt.className = 'result-field-title'; mt.textContent = 'Comunicazione all\'utente';
-  const mb = document.createElement('div'); mb.className = 'result-field-body'; mb.textContent = t.msg;
+  // Messaggio
+  const mf = document.createElement('div'); mf.className = 'd-field';
+  const mt = document.createElement('div'); mt.className = 'd-field-title'; mt.textContent = 'Comunicazione all\'utente';
+  const mb = document.createElement('div'); mb.className = 'd-field-body'; mb.textContent = t.msg;
   mf.appendChild(mt); mf.appendChild(mb);
   inner.appendChild(mf);
 
   // Note
   if (t.note) {
-    const nf = document.createElement('div'); nf.className = 'result-field';
-    const nt = document.createElement('div'); nt.className = 'result-field-title'; nt.textContent = 'Note';
-    const nb = document.createElement('div'); nb.className = 'result-field-body'; nb.textContent = t.note;
+    const nf = document.createElement('div'); nf.className = 'd-field';
+    const nt = document.createElement('div'); nt.className = 'd-field-title'; nt.textContent = 'Note';
+    const nb = document.createElement('div'); nb.className = 'd-field-body'; nb.textContent = t.note;
     nf.appendChild(nt); nf.appendChild(nb);
     inner.appendChild(nf);
   }
 
-  // Continue button
-  const canContinue = t.toG && t.toG !== null;
+  // Continua
+  const canCont = t.toG && t.toG !== 'XX' && t.toG !== null;
   const btn = document.createElement('button');
-  btn.className = 'continue-btn';
+  btn.className = 'cont-btn';
   btn.textContent = 'Continua da questo stato →';
-  btn.disabled = !canContinue;
-  if (!canContinue) btn.title = 'Stato risultante non determinabile automaticamente';
+  btn.disabled = !canCont;
+  if (!canCont) btn.title = 'Stato risultante terminale o non determinabile';
   btn.onclick = () => {
-    const newG = t.toG;
+    const newG = t.toG === 'INV' ? selG : t.toG;
     const newC = t.toC === 'INV' ? selC : t.toC;
-    const gLabel = G[newG]?.id;
-    const cLabel = newC ? C[newC]?.id : null;
-    history.push({ c: cLabel, g: gLabel, evento: t.evento });
+    history.push({ cKey: newC, gKey: newG, label: t.quando });
     selG = newG;
     selC = newC;
     selT = null;
     renderAll();
-    document.querySelector('.hist').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('hist').scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   inner.appendChild(btn);
 
   body.appendChild(inner);
-  dot.className = 'step-dot done'; dot.textContent = '✓';
+  dot.className = 'step-dot dot-done'; dot.textContent = '✓';
 }
 
-// ── RENDER: HISTORY BAR ───────────────────────────────────────────
-function renderHistory() {
-  const bar  = document.getElementById('hist');
-  const flow = document.getElementById('hist-flow');
+// ─────────────────────────────────────────────────────────────────
+// RENDER HISTORY
+// ─────────────────────────────────────────────────────────────────
+function renderHist() {
+  const bar   = document.getElementById('hist');
+  const inner = document.getElementById('hist-inner');
   if (history.length < 2) { bar.style.display = 'none'; return; }
   bar.style.display = 'block';
-  flow.innerHTML = '';
+  inner.innerHTML = '';
+
   history.forEach((step, i) => {
-    if (i > 0) {
-      const sep = document.createElement('div');
-      sep.className = 'hist-sep';
-      const ev = document.createElement('div');
-      ev.className = 'hist-evento';
-      ev.textContent = step.evento || '';
-      const arr = document.createElement('div');
-      arr.className = 'hist-arrow'; arr.textContent = '→';
-      sep.appendChild(ev); sep.appendChild(arr);
-      flow.appendChild(sep);
+    if (i > 0 && step.label) {
+      const sep = document.createElement('div'); sep.className = 'h-sep';
+      const lbl = document.createElement('div'); lbl.className = 'h-label'; lbl.textContent = step.label;
+      const arr = document.createElement('div'); arr.className = 'h-arrow'; arr.textContent = '→';
+      sep.appendChild(lbl); sep.appendChild(arr);
+      inner.appendChild(sep);
     }
-    const st = document.createElement('div');
-    st.className = 'hist-step';
-    if (step.c) {
-      const ci = Object.values(C).find(s => s.id === step.c);
+    const st = document.createElement('div'); st.className = 'h-step';
+    if (step.cKey) {
+      const ci = C[step.cKey];
       if (ci) {
-        const b = document.createElement('span');
-        b.className = 'hist-badge';
+        const b = document.createElement('span'); b.className = 'h-badge';
         b.style.cssText = `background:${ci.bg};color:${ci.text};border-color:${ci.dot}`;
         b.textContent = ci.id; st.appendChild(b);
       }
     }
-    if (step.g) {
-      const gi = Object.values(G).find(s => s.id === step.g);
+    if (step.gKey) {
+      const gi = G[step.gKey];
       if (gi) {
-        const b = document.createElement('span');
-        b.className = 'hist-badge';
+        const b = document.createElement('span'); b.className = 'h-badge';
         b.style.cssText = `background:${gi.bg};color:${gi.text};border-color:${gi.dot}`;
         b.textContent = gi.id; st.appendChild(b);
       }
     }
-    flow.appendChild(st);
+    inner.appendChild(st);
   });
 }
 
-// ── MAIN ──────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// MAIN
+// ─────────────────────────────────────────────────────────────────
 function renderAll() {
-  renderHistory();
+  renderHist();
   renderC();
   renderG();
-  renderE();
-  renderR();
+  renderT();
+  renderD();
 }
 
-function resetAll() {
+function reset() {
   selC = null; selG = null; selT = null; history = [];
   renderAll();
 }
 
+// ─────────────────────────────────────────────────────────────────
+// VIEW SWITCH
+// ─────────────────────────────────────────────────────────────────
+function switchView(name) {
+  const explore = document.getElementById('view-explore');
+  const table   = document.getElementById('view-table');
+  const tabE = document.getElementById('tab-explore');
+  const tabT = document.getElementById('tab-table');
+  if (name === 'table') {
+    explore.hidden = true; table.hidden = false;
+    tabE.classList.remove('active'); tabT.classList.add('active');
+    renderTable();
+  } else {
+    table.hidden = true; explore.hidden = false;
+    tabT.classList.remove('active'); tabE.classList.add('active');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// TABLE_MD — replica fedele della Tabella Transizioni di Stato (md)
+// Sintassi celle:
+//   @C:KEY = badge stato comunicazione (es. @C:NC)
+//   @G:KEY = badge stato gestione (es. @G:DP)
+//   @INV   = "(invariato)"
+//   @XX    = badge ANNULLATO
+//   @NA    = "—"
+//   @ANY   = "Qualsiasi"
+//   @URG   = pallino rosso 🔴
+//   @MSG_A = 📎 Tipo A — file in Documenti
+//   @MSG_B = 📨 Tipo B — senza file
+//   @WAIT  = ⏳ File F24 dopo "Pagamento rimosso"
+//   testo libero altrimenti
+// ─────────────────────────────────────────────────────────────────
+const TABLE_MD = [
+  {
+    title: 'Tabella 1 — Transizioni per evento di sistema',
+    sections: [
+      {
+        title: '1.1 — Ingresso F24 nel microservizio',
+        columns: ['Provenienza', 'Delega utente', 'Stato gestione', 'Stato comunicazione', 'Comunicazione utente', 'Urgenza', 'Note'],
+        rows: [
+          ['INPS (INVIO PROGRAMMATO / MANUALE)', 'Attiva (incluso cuscinetto)', '@G:DP', '@C:NC', 'Nessuna', '—', 'Riga creata al caricamento F24, non all\'invio del messaggio'],
+          ['IVA (INVIATO)', 'Attiva (incluso cuscinetto)', '@G:DP', '@C:NC', 'Nessuna', '—', 'Trigger sempre manuale dell\'operatore'],
+          ['DDR (conferma recap) — checkbox ☐', 'Attiva (incluso cuscinetto)', '@G:DP', '@C:NC', 'Nessuna', '—', 'Ogni F24 crea riga indipendente'],
+          ['DDR (conferma recap) — checkbox ✅', 'Attiva (incluso cuscinetto)', '@G:MP', '@C:NC', 'Nessuna', '—', 'Operatore ha già predisposto su DATEV'],
+          ['INPS / IVA / DDR', 'Non attiva (utente Standard senza extra)', 'Riga nascosta nel sistema', '—', 'Nessuna', '—', 'F24 immagazzinato ma non visibile agli operatori; diventa visibile all\'attivazione delega'],
+          ['INPS / IVA / DDR', 'Scaduta (post-cuscinetto, EC04)', 'Non entra nel listing', '—', '@MSG_A "delega non attiva"', '—', 'F24 scartato dal flusso di gestione; file disponibile solo all\'utente'],
+        ]
+      },
+      {
+        title: '1.2 — Trigger T-30',
+        columns: ['Stato gestione (pre)', 'Stato comunicazione (pre)', 'Delega', 'Stato gestione (post)', 'Stato comunicazione (post)', 'Comunicazione utente', 'Note'],
+        rows: [
+          ['@G:DP', '@C:NC', 'Attiva', '@G:DP', '@C:AR', '@MSG_B (1 msg per F24)', 'Trigger: cron automatico o bulk Super Admin'],
+          ['@G:MP', '@C:NC', 'Attiva', '@G:MP', '@C:AR', '@MSG_B (1 msg per F24)', 'Il messaggio T-30 parte anche se già MESSO IN PAGAMENTO'],
+          ['@G:DP', '@C:NC', 'Non attiva', '@G:DP', '—', '@MSG_A (1 msg per F24)', 'Utente senza delega — pagamento autonomo'],
+        ],
+        note: '<strong>Nota:</strong> se l\'F24 transita nel microservizio tra T-30 e T-3 lavorativi, il messaggio viene inviato immediatamente (non in coda).'
+      },
+      {
+        title: '1.3 — T-3 lavorativi senza risposta (EC01)',
+        columns: ['Stato gestione (pre)', 'Stato comunicazione (pre)', 'Stato gestione (post)', 'Stato comunicazione (post)', 'Comunicazione utente', 'Urgenza', 'Note'],
+        rows: [
+          ['@G:DP', '@C:AR', '@G:NP', '@C:NR', '📎 File F24 disponibile in sezione Documenti (immediato)', '—', 'Operatore deve confermare "Non gestire F24" per chiudere in NON GESTIRE'],
+          ['@G:MP', '@C:AR', '@G:RP', '@C:NR', '@WAIT', '@URG Alert in cima + email Giusi e operatore assegnato', 'Operatore deve rimuovere da DATEV e confermare modal'],
+        ]
+      },
+      {
+        title: '1.4 — F24 caricato a ridosso della scadenza (DA CONTATTARE)',
+        intro: 'Quando un F24 entra nel microservizio con scadenza ≤ T-3 lavorativi, <strong>non scatta nessun automatismo</strong> (né T-30, né T-3). La riga viene creata nel listing con il <strong>solo stato comunicazione DA CONTATTARE</strong> (DC è uno stato di sola comunicazione, non si combina con uno stato gestione) e l\'operatore deve gestire la pratica manualmente (contatto esterno con l\'utente, poi aggiornamento via menu … → "Aggiorna stati F24" o CTA inline "Inserisci risposta").',
+        columns: ['Provenienza', 'Delega', 'Stato gestione', 'Stato comunicazione', 'Comunicazione utente', 'Note'],
+        rows: [
+          ['INPS / IVA / DDR', 'Attiva', '@NA', '@C:DC', 'Nessuna', 'F24 caricato con scadenza ≤ T-3 lav. Nessun messaggio automatico in piattaforma. In "Tasse e scadenze" compare un placeholder ("ti contatteremo a breve" o equivalente)'],
+        ],
+        note: '<strong>Nota:</strong> questo caso "salta" sia § 1.2 (Trigger T-30) sia § 1.3 (T-3 senza risposta) — non c\'è alcun cron che scatta su questi F24 finché l\'operatore non aggiorna manualmente lo stato risposta. Una volta che l\'operatore registra la scelta utente (PAGA QUICKFISCO / PAGA UTENTE / NESSUNA RISPOSTA) tramite "Inserisci risposta" o "Aggiorna stati F24", l\'F24 esce dallo stato DA CONTATTARE e assume una combinazione standard.'
+      },
+    ]
+  },
+  {
+    title: 'Tabella 2 — Transizioni per risposta utente',
+    sections: [
+      {
+        title: '2.1 — Utente risponde "Paga Quickfisco"',
+        columns: ['Stato gestione (pre)', 'Stato comunicazione (pre)', 'Stato gestione (post)', 'Stato comunicazione (post)', 'Comunicazione utente', 'Urgenza', 'Note'],
+        rows: [
+          ['@G:DP', '@C:AR', '@G:DP', '@C:PQ', 'Nessuna', '—', 'Operatore vede la risposta e predispone il pagamento su DATEV'],
+          ['@G:MP', '@C:AR', '@G:MP', '@C:PQ', 'Nessuna', '—', 'Pagamento già predisposto; operatore procede con quietanza'],
+        ]
+      },
+      {
+        title: '2.2 — Utente risponde "Pago io"',
+        columns: ['Stato gestione (pre)', 'Stato comunicazione (pre)', 'Stato gestione (post)', 'Stato comunicazione (post)', 'Comunicazione utente', 'Urgenza', 'Note'],
+        rows: [
+          ['@G:DP', '@C:AR', '@G:NP', '@C:PU', '📎 File F24 disponibile in sezione Documenti (immediato)', '—', 'Operatore deve confermare "Non gestire F24" per chiudere in NON GESTIRE'],
+          ['@G:MP', '@C:AR', '@G:RP', '@C:PU', '@WAIT', '@URG Alert in cima + email Giusi e operatore assegnato', 'File non inviato finché operatore non rimuove da DATEV e conferma modal'],
+          ['@G:DP', '@C:PQ', '@G:NP', '@C:PU', '📎 File F24 disponibile in sezione Documenti (immediato)', '—', 'Cambio di preferenza — solo tramite supporto clienti'],
+          ['@G:MP', '@C:PQ', '@G:RP', '@C:PU', '@WAIT', '@URG Alert in cima + email Giusi e operatore assegnato', 'Idem sopra'],
+        ]
+      },
+    ]
+  },
+  {
+    title: 'Tabella 3 — Transizioni per azione operatore',
+    sections: [
+      {
+        title: '3.1 — Operatore mette in pagamento',
+        columns: ['Stato gestione (pre)', 'Stato comunicazione (pre)', 'Stato gestione (post)', 'Stato comunicazione (post)', 'Comunicazione utente', 'Note'],
+        rows: [
+          ['@G:DP', '@C:NC', '@G:MP', '@C:NC', 'Nessuna', 'Operatore può predisporre anche prima del T-30'],
+          ['@G:DP', '@C:AR', '@G:MP', '@C:AR', 'Nessuna', '—'],
+          ['@G:DP', '@C:PQ', '@G:MP', '@C:PQ', 'Nessuna', 'Risposta ricevuta, operatore predispone'],
+        ],
+        note: '<strong>Nota su DA CONTATTARE:</strong> non si può mettere in pagamento direttamente una riga DA CONTATTARE perché DC è solo stato di comunicazione (no stato gestione associato). L\'operatore deve prima registrare la risposta utente tramite CTA inline "Inserisci risposta" o menu … → "Aggiorna stati F24"; solo dopo l\'F24 assume una combinazione standard su cui è poi possibile cliccare "Messo in pagamento".'
+      },
+      {
+        title: '3.2 — Operatore carica quietanza',
+        columns: ['Stato gestione (pre)', 'Stato comunicazione (pre)', 'Stato gestione (post)', 'Stato comunicazione (post)', 'Comunicazione utente', 'Note'],
+        rows: [
+          ['@G:MP', '@C:PQ', '@G:QC', '@C:PQ', 'Nessuna (silenzioso)', 'File salvato nei Documenti utente senza notifica'],
+        ]
+      },
+      {
+        title: '3.3 — Operatore clicca "Pagamento rimosso"',
+        columns: ['Stato gestione (pre)', 'Stato comunicazione (pre)', 'File F24 esiste?', 'Stato gestione (post)', 'Comunicazione utente', 'Urgenza', 'Note'],
+        rows: [
+          ['@G:RP', '@C:PU', 'Sì', '@G:NG', '📎 File F24 disponibile in Documenti dopo modal conferma', '—', 'Modal avvisa: "Verrà inviato il file F24 all\'utente"'],
+          ['@G:RP', '@C:NR', 'Sì', '@G:NG', '📎 File F24 disponibile in Documenti dopo modal conferma', '—', 'Idem'],
+          ['@G:RP', '@C:PU', 'No (EC05 Sc. 2)', '@XX', 'Nessuna', '—', 'File eliminato dall\'adempimento — modal e invio soppressi'],
+          ['@G:RP', '@C:NR', 'No (EC05 Sc. 2)', '@XX', 'Nessuna', '—', 'Idem'],
+        ]
+      },
+      {
+        title: '3.4 — Override manuale operatore (menu … → "Aggiorna stati F24")',
+        intro: 'La modal "Aggiorna stati F24" espone due dropdown: <b>Risposta utente</b> con 3 valori selezionabili (PAGA QUICKFISCO, PAGA UTENTE, NESSUNA RISPOSTA) e <b>Stato gestione</b> filtrato in base alla Risposta utente scelta.<br><br>Stati gestione mai selezionabili manualmente dalla modal: <code>NON PAGARE</code>, <code>RIMUOVERE PAGAMENTO</code>, <code>ANOMALIA</code>, <code>ANNULLATO</code>.',
+        subtables: [
+          {
+            label: 'Tabella di filtraggio dropdown',
+            columns: ['Risposta utente selezionata', 'Stati gestione selezionabili'],
+            rows: [
+              ['@C:PQ', '@G:DP, @G:MP, @G:QC'],
+              ['@C:PU', '@G:NG'],
+              ['@C:NR', '@G:NG'],
+            ]
+          }
+        ],
+        note: 'Ogni cambio manuale richiede nota obbligatoria e genera evento in History.<br><br><strong>Nota su DA CONTATTARE:</strong> è solo stato di partenza, non di destinazione. La modal non permette di selezionare DC nel dropdown Risposta utente — DC è impostato esclusivamente dal sistema all\'ingresso F24 con scadenza ≤ T-3 lav. (vedi § 1.4). Un F24 in DC esce di stato esclusivamente attraverso questa modal o tramite CTA inline "Inserisci risposta" (che apre la stessa modal).'
+      },
+      {
+        title: '3.5 — Operatore clicca CTA inline "Non gestire F24"',
+        intro: 'Il pulsante è visibile direttamente nella riga del listing per tutte le righe in stato NON PAGARE — non è accessibile dal menu …',
+        columns: ['Stato gestione (pre)', 'Stato comunicazione (pre)', 'Stato gestione (post)', 'Comunicazione utente', 'Note'],
+        rows: [
+          ['@G:NP', '@C:PU', '@G:NG', 'Nessuna (file già in Documenti)', 'Modal di conferma con avviso DATEV — nessuna nota obbligatoria'],
+          ['@G:NP', '@C:NR', '@G:NG', 'Nessuna (file già in Documenti)', 'Idem'],
+        ]
+      },
+      {
+        title: '3.6 — Operatore clicca "Annulla F24" (menu …)',
+        columns: ['Stato gestione (pre)', 'Stato gestione (post)', 'Comunicazione utente', 'Note'],
+        rows: [
+          ['@ANY', '@XX', 'Nessuna', 'Tutte le automazioni vengono bloccate'],
+        ]
+      },
+      {
+        title: '3.7 — Operatore reverte ANNULLATO',
+        columns: ['Stato gestione (pre)', 'Stato gestione (post)', 'Note'],
+        rows: [
+          ['@XX', 'Qualsiasi (con nota obbligatoria)', 'Caso eccezionale — nota obbligatoria + evento in History'],
+        ]
+      },
+    ]
+  },
+  {
+    title: 'Tabella 4 — Transizioni per eventi eccezionali',
+    sections: [
+      {
+        title: '4.1 — EC02: Revoca delega da parte dell\'utente',
+        columns: ['Stato gestione (pre)', 'Stato comunicazione (pre)', 'Stato gestione (post)', 'Stato comunicazione (post)', 'Comunicazione utente', 'Urgenza', 'Note'],
+        rows: [
+          ['@G:DP', '@ANY', '@G:NP', '@C:PU', '📎 File F24 disponibile in sezione Documenti (immediato)', '—', 'Operatore deve confermare "Non gestire F24" per chiudere in NON GESTIRE'],
+          ['@G:MP', '@ANY', '@G:RP', '@C:PU', '@WAIT', '@URG Alert in cima + email Giusi e operatore assegnato', 'File non inviato finché operatore non rimuove e conferma'],
+          ['@G:AN', '@ANY', '@G:AN', '@INV', 'Nessuna', '@URG Rimane in cima', 'Operatore deve risolvere ANOMALIA prima di gestire la revoca'],
+          ['Non presente nel listing', '—', 'Non presente', '—', 'Nessuna', '—', 'F24 non ancora nel listing al momento della revoca → non comparirà mai'],
+        ]
+      },
+      {
+        title: '4.2 — EC05: Operatore rimuove F24 dall\'adempimento',
+        subtables: [
+          {
+            label: 'Vecchio F24 (riga esistente nel listing)',
+            columns: ['Stato gestione (pre)', 'Stato comunicazione (pre)', 'Stato gestione (post)', 'Urgenza', 'Note'],
+            rows: [
+              ['@G:DP', '@ANY', '@G:DP (invariato) → @XX dopo conferma operatore', '—', 'Riga evidenziata in rosso ⚠️ "F24 eliminato"; CTA contestuale → "Annulla F24"'],
+              ['@G:MP', '@ANY', '@G:RP', '@URG Alert in cima + email Giusi e operatore assegnato', 'Riga rosso ⚠️; file eliminato → modal soppressa → flusso termina in ANNULLATO'],
+              ['@G:RP', '@ANY', '@G:RP', '@URG Già urgente', 'Invariato — già in carico all\'operatore'],
+              ['@G:NG', '@ANY', '@G:NG', '—', 'Invariato'],
+              ['@XX', '@ANY', '@XX', '—', 'Invariato — alert rosso non compare'],
+            ]
+          },
+          {
+            label: 'Nuovo F24 (stessa tipologia, stesso slot nell\'adempimento)',
+            columns: ['Stato comunicazione vecchio F24', 'Stato gestione nuovo F24', 'Stato comunicazione nuovo F24', 'Urgenza', 'Note'],
+            rows: [
+              ['@C:NC (qualsiasi stato gestione)', '@G:DP', '@C:NC', '—', 'Nessuna comunicazione all\'utente; rientra nel flusso standard'],
+              ['@C:AR', '@G:AN', '@C:NC', '@URG Alert in cima + email Giusi e operatore assegnato', 'Utente ha già ricevuto messaggio con importo errato. Operatore risolve via "Aggiorna stati F24"'],
+              ['@C:PQ', '@G:AN', '@C:NC', '@URG Alert in cima + email Giusi e operatore assegnato', 'Utente ha già confermato importo errato. Operatore risolve via "Aggiorna stati F24"'],
+              ['@C:PU', '@G:AN', '@C:NC', '@URG Alert in cima + email Giusi e operatore assegnato', 'Utente ha già il file F24 non più valido. Operatore risolve via "Aggiorna stati F24"'],
+            ]
+          }
+        ],
+        note: '<strong>Nota:</strong> l\'alert rosso ⚠️ sulla riga del vecchio F24 scompare automaticamente quando raggiunge ANNULLATO. Il nuovo F24 è una riga indipendente nel listing: nasce con stato comunicazione NON COMUNICATO perché l\'utente non ha ancora ricevuto comunicazioni su questo specifico F24.'
+      },
+      {
+        title: '4.3 — EC03: Archiviazione profilo (contratto rescisso)',
+        subtables: [
+          {
+            label: 'Fase 1 — Inadempienza rate in corso',
+            columns: ['Stato gestione', 'Modifica automatica', 'Note'],
+            rows: [
+              ['@ANY', 'Nessuna', 'Operatore può intervenire manualmente; notifiche T-30 e T-3 continuano normalmente'],
+            ]
+          },
+          {
+            label: 'Fase 2 — Profilo archiviato',
+            columns: ['Stato gestione (pre)', 'Stato gestione (post)', 'Comunicazione utente', 'Urgenza', 'Note'],
+            rows: [
+              ['@G:DP', '@XX', 'Nessuna', '—', '—'],
+              ['@G:MP', '@G:RP', 'Nessuna', '@URG Alert in cima + email Giusi e operatore assegnato', 'Operatore rimuove da DATEV → "Pagamento rimosso" → ANNULLATO (non NON GESTIRE)'],
+              ['@G:RP', '@G:RP', 'Nessuna', '@URG Già urgente', 'Rimane — già in carico all\'operatore'],
+              ['@G:AN', '@XX', 'Nessuna', '—', 'Profilo archiviato — anomalia non più azionabile'],
+              ['@G:NG', '@XX', 'Nessuna', '—', '—'],
+              ['@G:QC', '@G:QC', 'Nessuna', '—', 'Pagamento completato — invariato'],
+              ['@XX', '@XX', 'Nessuna', '—', 'Già nello stato finale'],
+            ]
+          }
+        ]
+      },
+      {
+        title: '4.4 — EC04: Scadenza delega (cuscinetto 7 giorni esaurito) e Downgrade Premium → Standard',
+        intro: 'Per la logica di validità e rinnovo della delega vedi la user story dedicata <b>"Estensione validità delega — 7 giorni di cuscinetto"</b>. Questa sezione copre esclusivamente le transizioni di stato degli F24 quando la delega scade senza rinnovo.<br><br><strong>Discriminante:</strong> alla scadenza delega le transizioni dipendono dallo stato risposta utente al momento del taglio (mandato esplicito vs nessuna scelta vs flusso già avviato).',
+        subtables: [
+          {
+            label: 'Caso 1 — Mandato esplicito PAGA QUICKFISCO (nessuna transizione)',
+            columns: ['Stato gestione (pre)', 'Stato risposta (pre)', 'Stato gestione (post)', 'Stato risposta (post)', 'Note'],
+            rows: [
+              ['@G:DP', '@C:PQ', '@INV', '@INV', 'Operatore continua fino a QUIETANZA CARICATA, anche se scadenza F24 > scadenza delega'],
+              ['@G:MP', '@C:PQ', '@INV', '@INV', 'Idem'],
+              ['@G:QC', '@C:PQ', '@INV', '@INV', 'Pagamento completato'],
+            ]
+          },
+          {
+            label: 'Caso 2 — Senza mandato esplicito (NON COMUNICATO / ATTESA RISPOSTA)',
+            columns: ['Stato gestione (pre)', 'Stato risposta (pre)', 'Stato gestione (post)', 'Stato risposta (post)', 'Comunicazione utente', 'Urgenza', 'Note'],
+            rows: [
+              ['@G:DP', '@C:NC', '@G:NP', '@C:PU', '📎 Al T-30 messaggio Tipo A "delega non attiva" + file F24 in Documenti', '—', 'Operatore conferma "Non gestire F24"'],
+              ['@G:DP', '@C:AR', '@G:NP', '@C:PU', '📎 File F24 disponibile in Documenti immediato', '—', 'Idem'],
+              ['@G:MP', '@C:NC', '@G:RP', '@C:PU', '@WAIT', '@URG Alert in cima + email Giusi e operatore assegnato', 'Idem'],
+              ['@G:MP', '@C:AR', '@G:RP', '@C:PU', '@WAIT', '@URG Alert in cima + email Giusi e operatore assegnato', 'Idem'],
+            ]
+          },
+          {
+            label: 'Caso 3 — Flusso già avviato (NESSUNA RISPOSTA / PAGA UTENTE)',
+            columns: ['Stato gestione (pre)', 'Stato risposta (pre)', 'Stato gestione (post)', 'Stato risposta (post)', 'Note'],
+            rows: [
+              ['@G:NP', '@C:NR o @C:PU', '@INV', '@INV', 'Già in chiusura — operatore conferma "Non gestire F24"'],
+              ['@G:RP', '@C:NR o @C:PU', '@INV', '@INV', 'Già urgente — operatore continua "Pagamento rimosso"'],
+            ]
+          },
+          {
+            label: 'Caso 4 — DA CONTATTARE (gestione manuale)',
+            columns: ['Stato gestione (pre)', 'Stato risposta (pre)', 'Stato gestione (post)', 'Stato risposta (post)', 'Note'],
+            rows: [
+              ['@NA', '@C:DC', '@NA', 'Manuale', 'DC è solo stato di comunicazione, no stato gestione. Nessuna automazione alla scadenza delega — operatore decide caso per caso (contatto esterno + "Inserisci risposta" / "Aggiorna stati F24").'],
+            ]
+          },
+          {
+            label: 'Caso 5 — Stati finali',
+            columns: ['Stato gestione (pre)', 'Stato gestione (post)', 'Note'],
+            rows: [
+              ['@G:QC', '@INV', 'Pagamento completato'],
+              ['@G:NG', '@INV', 'Pratica chiusa'],
+              ['@XX', '@INV', 'Stato finale'],
+              ['@G:AN', '@XX', 'Delega scaduta — anomalia non più azionabile'],
+            ]
+          }
+        ],
+        note: '<strong>Note:</strong><br>• Durante il cuscinetto 7 giorni la delega rimane attiva e gli F24 continuano normalmente. Le transizioni qui descritte si attivano solo se il cuscinetto scade senza rinnovo.<br>• Per il downgrade Premium → Standard senza servizio extra valgono le stesse transizioni (nessun cuscinetto).<br>• Per F24 caricati dopo la scadenza delega vedi § 1.1 (non entrano nel listing, viene inviato messaggio "delega non attiva" + file in Documenti).'
+      },
+      {
+        title: '4.5 — ANOMALIA: transizioni',
+        columns: ['Evento', 'Stato gestione (pre)', 'Stato gestione (post)', 'Modalità', 'Note'],
+        rows: [
+          ['Nuovo F24 caricato dopo comunicazione con dati errati (EC05)', '—', '@G:AN', 'Automatico', 'Non selezionabile manualmente'],
+          ['Operatore risolve via menu … → "Aggiorna stati F24"', '@G:AN', 'Qualsiasi (con nota, esclusi gli stati solo-automatici)', 'Manuale', 'Nota obbligatoria + evento in History'],
+          ['Archiviazione profilo (EC03)', '@G:AN', '@XX', 'Automatico', 'Profilo archiviato — anomalia non più azionabile'],
+          ['Scadenza delega senza rinnovo (EC04)', '@G:AN', '@XX', 'Automatico', 'Delega scaduta — anomalia non più azionabile'],
+          ['Revoca delega (EC02)', '@G:AN', '@G:AN', 'Bloccato', 'Rimane — operatore deve risolvere prima di gestire la revoca'],
+        ]
+      }
+    ]
+  },
+  {
+    title: 'Tabella 5 — DDR: Reset Bozza',
+    sections: [
+      {
+        title: 'Condizioni di blocco',
+        columns: ['Condizione F24 nel listing', 'Blocca il reset?'],
+        rows: [
+          ['Scadenza futura + stato ≠ ANNULLATO', '✅ Sì — blocca'],
+          ['Scadenza futura + stato ANNULLATO', '☐ No'],
+          ['Scadenza passata (qualsiasi stato)', '☐ No'],
+        ],
+        note: '<strong>Flusso:</strong><br>1. Operatore clicca "Reset bozza" → modal con lista F24 associati<br>2. Se uno o più F24 bloccanti → pulsante conferma disabilitato; CTA → tab Gestione F24<br>3. Operatore annulla singolarmente gli F24 bloccanti<br>4. Una volta tutti in ANNULLATO → reset sbloccato<br>5. Reset eseguito → eliminazione permanente bozza + tutti gli F24 associati'
+      }
+    ]
+  },
+  {
+    title: 'Riepilogo stati finali',
+    sections: [
+      {
+        title: 'Reversibilità degli stati',
+        columns: ['Stato', 'Reversibile?', 'Come'],
+        rows: [
+          ['@G:QC', 'Sì — "Rimuovi quietanza"', 'Torna a MESSO IN PAGAMENTO'],
+          ['@G:NP', 'Sì — non è finale, transita in NON GESTIRE', 'CTA inline "Non gestire F24" (modal DATEV, nessuna nota)'],
+          ['@G:RP', 'Sì — non è finale, transita in NON GESTIRE o ANNULLATO', 'CTA "Pagamento rimosso" (modal di conferma invio file)'],
+          ['@G:NG', 'Sì — solo manuale (caso eccezionale)', 'Menu … → "Aggiorna stati F24" + nota obbligatoria'],
+          ['@G:AN', 'Sì — solo manuale', 'Menu … → "Aggiorna stati F24" + nota obbligatoria; oppure transizione automatica EC03/EC04 → ANNULLATO'],
+          ['@XX', 'Sì — solo manuale (caso eccezionale)', 'Menu … → "Aggiorna stati F24" + nota obbligatoria'],
+        ]
+      }
+    ]
+  }
+];
+
+// ─────────────────────────────────────────────────────────────────
+// RENDER TABLE VIEW (replica fedele della Tabella Transizioni di Stato — md)
+// ─────────────────────────────────────────────────────────────────
+function renderTable() {
+  const root = document.getElementById('tbl-root');
+  root.innerHTML = '';
+
+  // Helper: costruisce un badge per stato C/G dato il key
+  function makeBadge(key, type) {
+    const info = type === 'c' ? C[key] : G[key];
+    if (!info) return null;
+    const s = document.createElement('span');
+    s.className = 'tbl-badge';
+    s.style.cssText = `background:${info.bg};color:${info.text};border-color:${info.dot}`;
+    s.textContent = info.id;
+    return s;
+  }
+
+  // Renderizza una cella parsando i pattern @C:KEY, @G:KEY, @INV, @XX, @NA, @ANY, @URG, @MSG_A, @MSG_B, @WAIT
+  function renderCell(text) {
+    const container = document.createElement('div');
+    container.className = 'tbl-cell-content';
+    if (typeof text !== 'string' || !text) {
+      container.textContent = '—';
+      return container;
+    }
+    // Tokenizza preservando i pattern @XXX o @XXX:YY
+    const tokens = text.split(/(@[A-Z_]+(?::[A-Z]+)?)/g);
+    tokens.forEach(tok => {
+      if (!tok) return;
+      if (tok.startsWith('@C:')) {
+        const b = makeBadge(tok.slice(3), 'c');
+        if (b) container.appendChild(b);
+      } else if (tok.startsWith('@G:')) {
+        const b = makeBadge(tok.slice(3), 'g');
+        if (b) container.appendChild(b);
+      } else if (tok === '@INV') {
+        const s = document.createElement('span'); s.className = 'tbl-inv'; s.textContent = '(invariato)';
+        container.appendChild(s);
+      } else if (tok === '@XX') {
+        const s = document.createElement('span'); s.className = 'tbl-xx'; s.textContent = 'ANNULLATO';
+        container.appendChild(s);
+      } else if (tok === '@NA') {
+        const s = document.createElement('span'); s.className = 'tbl-undef'; s.textContent = '—';
+        container.appendChild(s);
+      } else if (tok === '@ANY') {
+        const s = document.createElement('span'); s.className = 'tbl-undef'; s.textContent = 'Qualsiasi';
+        container.appendChild(s);
+      } else if (tok === '@URG') {
+        const s = document.createElement('span'); s.className = 'tbl-urg-icon'; s.textContent = '🔴';
+        container.appendChild(s);
+      } else if (tok === '@MSG_A') {
+        container.appendChild(document.createTextNode('📎 Tipo A — file in Documenti'));
+      } else if (tok === '@MSG_B') {
+        container.appendChild(document.createTextNode('📨 Tipo B — senza file né importo'));
+      } else if (tok === '@WAIT') {
+        container.appendChild(document.createTextNode('⏳ File F24 dopo "Pagamento rimosso"'));
+      } else {
+        container.appendChild(document.createTextNode(tok));
+      }
+    });
+    return container;
+  }
+
+  // Costruisce una tabella (thead + tbody) da columns + rows
+  function buildTable(columns, rows) {
+    const wrap = document.createElement('div');
+    wrap.className = 'tbl-wrap';
+    const table = document.createElement('table');
+    table.className = 'tbl';
+
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    columns.forEach(c => {
+      const th = document.createElement('th');
+      th.textContent = c;
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(row => {
+      const tr = document.createElement('tr');
+      row.forEach(cell => {
+        const td = document.createElement('td');
+        td.appendChild(renderCell(cell));
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    return wrap;
+  }
+
+  // Costruisce una sezione (titolo + intro + tabelle + note)
+  function buildSection(sec) {
+    const section = document.createElement('div');
+    section.className = 'tbl-section';
+
+    if (sec.title) {
+      const h = document.createElement('div');
+      h.className = 'tbl-sub-hdr';
+      h.textContent = sec.title;
+      section.appendChild(h);
+    }
+
+    if (sec.intro) {
+      const intro = document.createElement('div');
+      intro.className = 'tbl-intro';
+      intro.innerHTML = sec.intro;
+      section.appendChild(intro);
+    }
+
+    if (sec.subtables) {
+      sec.subtables.forEach(st => {
+        if (st.label) {
+          const lbl = document.createElement('div');
+          lbl.className = 'tbl-subtable-lbl';
+          lbl.textContent = st.label;
+          section.appendChild(lbl);
+        }
+        section.appendChild(buildTable(st.columns, st.rows));
+      });
+    } else if (sec.columns && sec.rows) {
+      section.appendChild(buildTable(sec.columns, sec.rows));
+    }
+
+    if (sec.note) {
+      const n = document.createElement('div');
+      n.className = 'tbl-note-block';
+      n.innerHTML = sec.note;
+      section.appendChild(n);
+    }
+
+    return section;
+  }
+
+  TABLE_MD.forEach(tbl => {
+    const block = document.createElement('div');
+    block.className = 'tbl-block';
+
+    const h = document.createElement('div');
+    h.className = 'tbl-block-hdr';
+    h.textContent = tbl.title;
+    block.appendChild(h);
+
+    tbl.sections.forEach(sec => {
+      block.appendChild(buildSection(sec));
+    });
+
+    root.appendChild(block);
+  });
+}
+
 renderAll();
 
-// ── PASSWORD GATE ─────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// PASSWORD GATE
+// ─────────────────────────────────────────────────────────────────
 (async function() {
   const HASH = '197a91b456707498a4f1cf4bd1f9c5f79a617c2699acc8e77355ea7e75e2deb1';
-  const KEY  = 'qf_f24_auth';
-  const gate  = document.getElementById('gate');
-  const input = document.getElementById('pwInput');
-  const btn   = document.getElementById('pwBtn');
-  const err   = document.getElementById('pwErr');
+  const KEY  = 'qf_f24_v2';
+  const gate = document.getElementById('gate');
+  const inp  = document.getElementById('pwIn');
+  const btn  = document.getElementById('pwBtn');
+  const err  = document.getElementById('pwErr');
 
-  function unlock() { gate.classList.add('hidden'); }
+  const unlock = () => gate.classList.add('hidden');
   if (sessionStorage.getItem(KEY) === '1') { unlock(); return; }
 
-  async function sha256(str) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  async function sha256(s) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
   }
 
   async function attempt() {
-    const hash = await sha256(input.value);
-    if (hash === HASH) { sessionStorage.setItem(KEY, '1'); unlock(); }
-    else {
-      input.classList.add('error');
-      err.classList.add('on');
-      input.value = ''; input.focus();
+    if ((await sha256(inp.value)) === HASH) {
+      sessionStorage.setItem(KEY, '1'); unlock();
+    } else {
+      inp.classList.add('err'); err.classList.add('on');
+      inp.value = ''; inp.focus();
     }
   }
 
   btn.addEventListener('click', attempt);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') attempt(); });
-  input.addEventListener('input', () => { input.classList.remove('error'); err.classList.remove('on'); });
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') attempt(); });
+  inp.addEventListener('input', () => { inp.classList.remove('err'); err.classList.remove('on'); });
 })();
 </script>
 </body>
